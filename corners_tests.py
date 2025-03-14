@@ -1,14 +1,13 @@
+from cmath import polar
 from math import cos, radians
 from itertools import combinations
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 from contours import find_piece_contours
 
-ANGLE_THRESHOLD = cos(radians(85))
-DIST_THRESHOLD = 30
-AREA_THRESHOLD = 0.8
-ASPECT_THRESHOLD = 1.2
+ANGLE_THRESHOLD = 0 # to be determined
 
 def normalize_vec(vec):
     return vec / np.linalg.norm(vec)
@@ -17,79 +16,56 @@ def find_corners(contour, img):
     approx = cv2.approxPolyDP(contour, 0.005 * cv2.arcLength(contour, True), True)
     black = np.zeros(img.shape[:2], dtype=np.uint8)
     cv2.drawContours(black, [approx], 0, 255, cv2.FILLED)
+    cv2.imshow("black", black)
 
-    corners = cv2.goodFeaturesToTrack(black, 20,0.01,50)
-    corners = np.intp(corners)
-    for corner in corners:
-        cv2.circle(img, corner.ravel(), 4, (255, 255, 255), -1)
-    base_area = cv2.contourArea(contour)
-    min_area = base_area * AREA_THRESHOLD
+    M = cv2.moments(contour)
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
 
-    for a,b,c in combinations(corners, 3):
-        a = a.ravel()
-        b = b.ravel()
-        c = c.ravel()
+    distances = []
+    angles = []
 
-        ab = b - a
-        ac = c - a
-        bc = c - b
+    for c in contour:
+        c = c[0]
+        dist = np.linalg.norm(c - [cX, cY])
+        angle = np.atan2(c[1] - cY, c[0] - cX)
+        distances.append(dist)
+        angles.append(angle)
 
-        nab = normalize_vec(ab)
-        nac = normalize_vec(ac)
-        nbc = normalize_vec(bc)
-        dot_a = abs(np.dot(nab, nac))
-        dot_b = abs(np.dot(nab, nbc))
-        dot_c = abs(np.dot(nbc, nac))
+    polar_contour = list(zip(angles, distances))
 
-        min_dot = min(dot_a, dot_b, dot_c)
+    for i, (angle1, dist1) in enumerate(polar_contour):
+        before = polar_contour[(i - 1) % len(polar_contour)]
+        after = polar_contour[(i + 1) % len(polar_contour)]
 
-        if min_dot <= ANGLE_THRESHOLD:
-            if dot_a == min_dot:
-                d = (b + ac).astype(np.int64)
-                w = np.linalg.norm(ab)
-                h = np.linalg.norm(ac)
-                pts = [a, b, d, c]
+        der_before = (dist1 - before[1]) / ((angle1 - before[0]) % (np.pi * 2))
+        der_after = (after[1] - dist1) / ((after[0] - angle1) % (np.pi * 2))
 
-            elif dot_b == min_dot:
-                d = (a + bc).astype(np.int64)
-                w = np.linalg.norm(ab)
-                h = np.linalg.norm(bc)
-                pts = [b, c, d, a]
+        if der_after * der_before < 0:
+            der_tot = der_after / der_before
+            if der_tot <= -2:
+                # draw point on image
+                x = int(cX + dist1 * cos(angle1))
+                y = int(cY + dist1 * np.sin(angle1))
 
-            else:
-                d = (a - bc).astype(np.int64)
-                w = np.linalg.norm(ac)
-                h = np.linalg.norm(bc)
-                pts = [c, a, d, b]
+                cv2.circle(img, (x, y), 10, (0, 0, 255), -1)
+                cv2.imshow("img", img)
+                cv2.waitKey(-1)
 
-            area = w * h
-            ratio = max(w, h) / min(w, h)
 
-            f = 4
-            if area < min_area or ratio > ASPECT_THRESHOLD:
-                continue
+    plt.scatter(angles, distances)
+    plt.show()
 
-            for i in corners:
-                i = i.ravel()
-                if np.linalg.norm(i - d) <= DIST_THRESHOLD:
-                    cv2.circle(img, d, DIST_THRESHOLD, (0, 255, 255), 2)
-                    cv2.circle(img, i, 8, (0, 0, 255), -1)
-                    cv2.circle(img, a, 6, (0, 255, 0), -1)
-                    cv2.circle(img, b, 6, (255, 0, 0), -1)
-                    cv2.circle(img, c, 6, (255, 255, 0), -1)
-                    cv2.drawContours(img, [np.array(pts)], 0, (200, 200, 200), 4)
-                    img2 = cv2.resize(img, [img.shape[0] // f, img.shape[1] // f])
-                    cv2.imshow("corners", img2)
-                    cv2.waitKey(-1)
-                    return
 
 
 if __name__ == '__main__':
     #img = cv2.imread("res/49_pieces_sweater_kevin_small2.jpg")
-    img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
+    img = cv2.imread("res/p24_1_pull.jpg")
     pieces = find_piece_contours(img)
     n_pieces = len(pieces)
     print(f"{n_pieces} pieces")
     for i, (contour, box) in enumerate(pieces):
         print(f"Piece {i+1} / {n_pieces}")
         find_corners(contour, img)
+
+    cv2.imwrite("res/img_out/p24_1_pull_out_corners.jpg", img)
