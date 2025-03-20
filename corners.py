@@ -192,6 +192,7 @@ def find_corners(contour, dbg=False):
     tmp = np.zeros((3, 4))
     t0 = time.time()
     edges = []
+    edge_contours = []
     for i in range(4):
         c1, c2 = corners[i], corners[(i + 1) % 4]
         c1cart = pol2cart(contour[c1])
@@ -217,6 +218,13 @@ def find_corners(contour, dbg=False):
         elif ratio > 1.1:
             edge = OUTSIDE
         edges.append(edge)
+        cont = og_contour.take(
+            range(c1, c2 + 1),
+            axis=0,
+            mode="wrap"
+        )
+        cont = np.int32(cont.reshape((cont.shape[0], 1, cont.shape[1])))
+        edge_contours.append(cont)
 
     t1 = time.time()
     timings["edges"].append(t1 - t0)
@@ -236,19 +244,22 @@ def find_corners(contour, dbg=False):
         plt.show()
 
     pts = og_contour[corners]
-    return pts, edges
+    return pts, edges, edge_contours
 
 def main():
     from contours import find_piece_contours
 
     #img = cv2.imread("res/49_pieces_sweater_kevin_small.jpg")
+    img = cv2.imread("res/49_pieces_sweater_kevin_small2.jpg")
     #img = cv2.imread("res/24_pieces_sweater_kevin.jpg")
-    img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
+    #img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
+    #img = cv2.imread("res/24_pieces3_black_3.jpg")
     pieces = find_piece_contours(img)
     n_pieces = len(pieces)
     print(f"{n_pieces} pieces")
 
-    piece_by_piece = True
+    dbg = False
+    piece_by_piece = False
 
     for i, (contour, box) in tqdm.tqdm(enumerate(pieces)):
         cv2.drawContours(img, [contour], 0, (0, 0, 255), 2)
@@ -259,12 +270,12 @@ def main():
         y1 = np.max(box[:, 1])
 
         t0 = time.time()
-        corners, edges = find_corners(contour)
+        corners, edges, edge_contours = find_corners(contour, dbg)
         t1 = time.time()
         timings["total"].append(t1 - t0)
         corners = np.array(corners)
         cont = np.int32(corners.reshape((corners.shape[0], 1, corners.shape[1])))
-        cv2.drawContours(img, [cont], 0, (0, 255, 0), 2)
+        #cv2.drawContours(img, [cont], 0, (0, 255, 0), 2)
         for j in range(4):
             c1, c2 = corners[j], corners[(j + 1) % 4]
             cm = [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2]
@@ -274,9 +285,10 @@ def main():
                 col = (0, 255, 0)
             elif edge == INSIDE:
                 col = (0, 0, 255)
+            cv2.drawContours(img, [edge_contours[j]], -1, col, 2)
             cv2.circle(img, (int(cm[0]), int(cm[1])), 5, col, -1)
 
-        if piece_by_piece:
+        if piece_by_piece and y0 > 0 and x0 > 0 and y1 - y0 > 0 and x1 - x0 > 0:
             cv2.imshow("piece", img[y0:y1, x0:x1])
             cv2.setWindowTitle("piece", f"Piece {i+1}/{n_pieces}")
             cv2.waitKey(-1)
