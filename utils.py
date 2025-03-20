@@ -1,7 +1,7 @@
-# https://stackoverflow.com/a/70664846/11109181
 import numpy as np
 
 
+# https://stackoverflow.com/a/70664846/11109181
 def resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
     # Cumulative Euclidean distance between successive polygon points.
     # This will be the "x" for interpolation
