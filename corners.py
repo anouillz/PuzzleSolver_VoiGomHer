@@ -256,12 +256,27 @@ def edge_length(corners):
     return lengths
 
 
+def edge_vect(edge):
+    vect = []
+    c1 = edge[0]
+    c2 = edge[-1]
+    line = c2 - c1
+    n = np.array([-line[1], line[0]])
+    down = np.linalg.norm(n)
+
+    e = resample_polygon(edge[:, 0, :], 30)
+
+    for i in e:
+        v = i - c1
+        s = np.dot(v, n)
+        up = np.abs(s)
+        vect.append(up / down)
+
+    return np.array(vect)
 
 def main():
     from contours import find_piece_contours
 
-    #img = cv2.imread("res/49_pieces_sweater_kevin_small.jpg")
-    #img = cv2.imread("res/24_pieces_sweater_kevin.jpg")
     img = cv2.imread("res/p24_1_pull.jpg")
     pieces = find_piece_contours(img)
     n_pieces = len(pieces)
