@@ -2,7 +2,6 @@ import time
 
 import cv2
 import numpy as np
-import scipy
 from itertools import combinations
 import tqdm
 from matplotlib import pyplot as plt
@@ -246,14 +245,24 @@ def find_corners(contour, dbg=False):
     pts = og_contour[corners]
     return pts, edges, edge_contours
 
+def edge_length(corners):
+    lengths = []
+    # compute length with its 2 corners and its length in a 3 element list
+    for i in range(4):
+        c1, c2 = corners[i], corners[(i + 1) % 4]
+        length = np.linalg.norm(c1 - c2)
+        lengths.append(length)
+
+    return lengths
+
+
+
 def main():
     from contours import find_piece_contours
 
     #img = cv2.imread("res/49_pieces_sweater_kevin_small.jpg")
-    img = cv2.imread("res/49_pieces_sweater_kevin_small2.jpg")
     #img = cv2.imread("res/24_pieces_sweater_kevin.jpg")
-    #img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
-    #img = cv2.imread("res/24_pieces3_black_3.jpg")
+    img = cv2.imread("res/p24_1_pull.jpg")
     pieces = find_piece_contours(img)
     n_pieces = len(pieces)
     print(f"{n_pieces} pieces")
@@ -271,11 +280,12 @@ def main():
 
         t0 = time.time()
         corners, edges, edge_contours = find_corners(contour, dbg)
+        edges_length = edge_length(corners)
         t1 = time.time()
         timings["total"].append(t1 - t0)
         corners = np.array(corners)
         cont = np.int32(corners.reshape((corners.shape[0], 1, corners.shape[1])))
-        #cv2.drawContours(img, [cont], 0, (0, 255, 0), 2)
+        cv2.drawContours(img, [cont], 0, (0, 255, 0), 2)
         for j in range(4):
             c1, c2 = corners[j], corners[(j + 1) % 4]
             cm = [(c1[0] + c2[0]) / 2, (c1[1] + c2[1]) / 2]
@@ -292,6 +302,7 @@ def main():
             cv2.imshow("piece", img[y0:y1, x0:x1])
             cv2.setWindowTitle("piece", f"Piece {i+1}/{n_pieces}")
             cv2.waitKey(-1)
+
     cv2.imshow("Pieces", img)
     cv2.waitKey(-1)
 
