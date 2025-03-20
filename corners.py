@@ -6,9 +6,10 @@ from itertools import combinations
 import tqdm
 from matplotlib import pyplot as plt
 
-OUTSIDE = 1
-FLAT = 0
-INSIDE = -1
+from edge import EdgeType
+from piece import Piece
+from utils import resample_polygon
+
 timings = {
     "resampling": [],
     "polar": [],
@@ -34,23 +35,6 @@ def angle_diff(angle1, angle2):
     if diff > np.pi:
         diff = np.pi * 2 - diff
     return diff
-
-# https://stackoverflow.com/a/70664846/11109181
-def resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
-    # Cumulative Euclidean distance between successive polygon points.
-    # This will be the "x" for interpolation
-    d = np.cumsum(np.r_[0, np.sqrt((np.diff(xy, axis=0) ** 2).sum(axis=1))])
-
-    # get linearly spaced points along the cumulative Euclidean distance
-    d_sampled = np.linspace(0, d.max(), n_points)
-
-    # interpolate x and y coordinates
-    xy_interp = np.c_[
-        np.interp(d_sampled, d, xy[:, 0]),
-        np.interp(d_sampled, d, xy[:, 1]),
-    ]
-
-    return xy_interp
 
 def to_polar(contour):
     cv_contour = contour.reshape((contour.shape[0], 1, contour.shape[1]))
@@ -208,14 +192,13 @@ def find_corners(contour, dbg=False):
         tmp[0, i] = cm
         tmp[1, i] = mid_dist
         tmp[2, i] = mean_dist
-        #print(mean_dist / mid_dist)
         ratio = mean_dist / mid_dist
 
-        edge = FLAT
+        edge = EdgeType.FLAT
         if ratio < 0.9:
-            edge = INSIDE
+            edge = EdgeType.INSIDE
         elif ratio > 1.1:
-            edge = OUTSIDE
+            edge = EdgeType.OUTSIDE
         edges.append(edge)
         cont = og_contour.take(
             range(c1, c2 + 1),
@@ -277,7 +260,11 @@ def edge_vect(edge):
 def main():
     from contours import find_piece_contours
 
-    img = cv2.imread("res/p24_1_pull.jpg")
+    #img = cv2.imread("res/49_pieces_sweater_kevin_small.jpg")
+    #img = cv2.imread("res/49_pieces_sweater_kevin_small2.jpg")
+    #img = cv2.imread("res/24_pieces_sweater_kevin.jpg")
+    img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
+    #img = cv2.imread("res/24_pieces3_black_3.jpg")
     pieces = find_piece_contours(img)
     n_pieces = len(pieces)
     print(f"{n_pieces} pieces")
@@ -286,7 +273,7 @@ def main():
     piece_by_piece = False
 
     for i, (contour, box) in tqdm.tqdm(enumerate(pieces)):
-        cv2.drawContours(img, [contour], 0, (0, 0, 255), 2)
+        #cv2.drawContours(img, [contour], 0, (0, 0, 255), 2)
 
         x0 = np.min(box[:, 0])
         y0 = np.min(box[:, 1])
@@ -295,9 +282,12 @@ def main():
 
         t0 = time.time()
         corners, edges, edge_contours = find_corners(contour, dbg)
-        edges_length = edge_length(corners)
         t1 = time.time()
         timings["total"].append(t1 - t0)
+        p = Piece(i, contour, box, corners, edges, edge_contours)
+        p.draw(img)
+
+        """
         corners = np.array(corners)
         cont = np.int32(corners.reshape((corners.shape[0], 1, corners.shape[1])))
         cv2.drawContours(img, [cont], 0, (0, 255, 0), 2)
@@ -312,6 +302,13 @@ def main():
                 col = (0, 0, 255)
             cv2.drawContours(img, [edge_contours[j]], -1, col, 2)
             cv2.circle(img, (int(cm[0]), int(cm[1])), 5, col, -1)
+        """
+
+        for i in range(4):
+            edge = p.edges[i]
+            plt.plot(range(edge.SHAPE_VEC_SIZE), edge.shape_vec, label=f"Edge {i}")
+        plt.legend()
+        plt.show()
 
         if piece_by_piece and y0 > 0 and x0 > 0 and y1 - y0 > 0 and x1 - x0 > 0:
             cv2.imshow("piece", img[y0:y1, x0:x1])
