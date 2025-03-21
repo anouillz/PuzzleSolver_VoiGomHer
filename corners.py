@@ -263,7 +263,7 @@ def main():
     #img = cv2.imread("res/49_pieces_sweater_kevin_small.jpg")
     #img = cv2.imread("res/49_pieces_sweater_kevin_small2.jpg")
     #img = cv2.imread("res/24_pieces_sweater_kevin.jpg")
-    img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
+    img = cv2.imread("res/24.jpg")
     #img = cv2.imread("res/24_pieces3_black_3.jpg")
     pieces = find_piece_contours(img)
     n_pieces = len(pieces)
@@ -274,6 +274,12 @@ def main():
 
     for i, (contour, box) in tqdm.tqdm(enumerate(pieces)):
         #cv2.drawContours(img, [contour], 0, (0, 0, 255), 2)
+        M = cv2.moments(contour)
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+
+        # draw number in center of piece
+        cv2.putText(img, str(i), (cX, cY), cv2.FONT_HERSHEY_PLAIN, 4, (255, 0, 120), 3)
 
         x0 = np.min(box[:, 0])
         y0 = np.min(box[:, 1])

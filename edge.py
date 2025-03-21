@@ -44,10 +44,9 @@ class Edge:
         for i in e:
             v = i - c1
             s = np.dot(v, n)
-            up = np.abs(s)
-            vect.append(up / down)
+            vect.append(s / down)
 
-        return np.array(vect) * self.type.value
+        return np.array(vect)
 
     def compute_color_vec(self,img:np.ndarray):
         resampled_contour = resample_polygon(self.contour[:, 0, :],self.COLOR_VEC_SIZE)
@@ -71,7 +70,29 @@ class Edge:
 
         return np.array(color_vec)
 
+    # checks edges length and shape vector
+    def matches_with(self, other:Edge):
+
+        if self.type == EdgeType.FLAT or other.type == EdgeType.FLAT:
+            return False
 
 
-            
-            
+        # if length of edges dont match
+        if abs(self.length - other.length) / self.length > 0.2:
+            return False
+
+        # change other vector direction (car tous les edges sont en clockwise)
+        v = other.shape_vec[::-1]
+
+        if self.type != other.type:
+            print("----")
+            print("P", self.piece.id, " ", self.idx, " ; P", other.piece.id, " ", other.idx)
+            print("différence de longueur entre deux edges : ", abs(self.length - other.length) / self.length)
+            print("difference de forme: ", np.std(self.shape_vec + v))
+            print(self.shape_vec + v)
+
+
+
+
+        return np.linalg.norm(self.shape_vec + v) / self.length < 0.5
+
