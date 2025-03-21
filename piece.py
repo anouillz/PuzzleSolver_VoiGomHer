@@ -21,12 +21,13 @@ class Piece:
             bbox: tuple[int, int, int, int],
             corners: list[tuple[float, float]],
             edges: list[EdgeType],
-            edge_contours: list[np.ndarray]):
+            edge_contours: list[np.ndarray],
+            img:np.ndarray):
         self.id: int = id
         self.contour: np.array = contour
         self.corners_pos: np.array = corners
         self.edges: list[Edge] = [
-            Edge(self, i, cont, typ)
+            Edge(self, i, cont, typ,img)
             for i, (cont, typ) in enumerate(zip(edge_contours, edges))
         ]
         self.bbox: tuple[int, int, int, int] = bbox

@@ -27,7 +27,7 @@ def main():
     pieces = []
     for i, (contour, box) in enumerate(piece_contours):
         corners, edges, edge_contours = find_corners(contour)
-        piece = Piece(i, contour, box, corners, edges, edge_contours)
+        piece = Piece(i, contour, box, corners, edges, edge_contours,img)
         piece.draw(img)
         pieces.append(piece)
 
