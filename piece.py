@@ -45,14 +45,16 @@ class Piece:
 
     def get_base_angle(self) -> float:
         center = np.mean(self.corners_pos, axis=0)
-        angle = np.atan2(self.corners_pos[0][1]-center[1], self.corners_pos[0][0]-center[0])
+        angle = np.atan2(
+            self.corners_pos[0][1] - center[1],
+            self.corners_pos[0][0] - center[0]
+        )
         return angle
 
     def get_rotated_img(self, rot: int) -> np.array:
         base_angle: float = self.get_base_angle() * 180 / np.pi
-        print(base_angle)
         img = cv2.cvtColor(self.img, cv2.COLOR_BGR2BGRA)
-        mat = cv2.getRotationMatrix2D(np.float32(self.center), -base_angle, 1)
+        mat = cv2.getRotationMatrix2D(np.float32(self.center), base_angle + 45 - rot * 90, 1)
         mask = np.zeros(img.shape[:2], np.uint8)
         cv2.drawContours(mask, [self.contour], -1, (255, 255, 255, 255), cv2.FILLED)
         cv2.circle(img, np.intp(self.corners_pos[0]), 16, (255, 0, 255, 255), cv2.FILLED)
