@@ -69,6 +69,22 @@ class Edge:
             color_vec.append(color_mean)
 
         return np.array(color_vec)
+    
+    def compare_color_edge_with(self,e:Edge):
+        e_reversed = e.color_vec[::-1]
+        matches = []
+        ratio_each_color = 0.05
+        final_ratio = 0.85
+        for i, (f1, f2) in enumerate(zip(self.color_vec, e_reversed)):
+            lower_bound = [f2[j] * (1 - ratio_each_color) for j in range(3)]
+            upper_bound = [f2[j] * (1 + ratio_each_color) for j in range(3)]
+            if all(lower_bound[j] <= f1[j] <= upper_bound[j] for j in range(3)):
+                matches.append(i)
+
+        if(len(matches) / len(self.color_vec) >= final_ratio):
+            print("match !")
+        
+        return len(matches) / len(self.color_vec)
 
     # checks edges length and shape vector
     def matches_with(self, other:Edge):

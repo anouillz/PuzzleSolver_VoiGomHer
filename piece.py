@@ -1,9 +1,16 @@
 from __future__ import annotations
+from enum import IntEnum
 
 import cv2
 import numpy as np
-
 from edge import Edge, EdgeType
+
+
+
+class PieceType(IntEnum):
+    CORNER=0
+    EDGE=1
+    INSIDE=2
 
 
 class Piece:
@@ -31,6 +38,14 @@ class Piece:
             for i, (cont, typ) in enumerate(zip(edge_contours, edges))
         ]
         self.bbox: tuple[int, int, int, int] = bbox
+        
+        flat_length = len([e for e in edges if e.type == EdgeType.FLAT])
+        if flat_length == 2:
+            self.type = PieceType.CORNER
+        elif flat_length == 1:
+            self.type = PieceType.EDGE
+        else:
+            self.type = PieceType.INSIDE
 
     def draw(self, img: np.ndarray):
         for edge in self.edges:
