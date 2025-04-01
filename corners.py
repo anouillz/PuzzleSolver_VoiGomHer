@@ -262,8 +262,8 @@ def main():
 
     #img = cv2.imread("res/49_pieces_sweater_kevin_small.jpg")
     #img = cv2.imread("res/49_pieces_sweater_kevin_small2.jpg")
-    #img = cv2.imread("res/24_pieces_sweater_kevin.jpg")
-    img = cv2.imread("res/24.jpg")
+    img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
+    #img = cv2.imread("res/24.jpg")
     #img = cv2.imread("res/24_pieces3_black_3.jpg")
     pieces = find_piece_contours(img)
     n_pieces = len(pieces)
@@ -290,7 +290,7 @@ def main():
         corners, edges, edge_contours = find_corners(contour, dbg)
         t1 = time.time()
         timings["total"].append(t1 - t0)
-        p = Piece(i, contour, box, corners, edges, edge_contours)
+        p = Piece(i, contour, box, corners, edges, edge_contours, img)
         p.draw(img)
 
         """
