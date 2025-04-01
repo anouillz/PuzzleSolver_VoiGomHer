@@ -7,12 +7,15 @@ from piece import Piece,PieceType
 from edge import Edge,EdgeType
 import numpy as np
 
+from puzzle import Puzzle
+
 PATH = "res/24_pieces_sweater_kevin_small.jpg"
+#PATH = "res/49_pieces_sweater_kevin_small2.jpg"
 #PATH = "res/49.jpg"
 
 def find_pieces_matches(pieces:list[Piece],debug=True):
     result = [[() for i in range(0,len(pieces))] for i in range(0,len(pieces))]
-    
+
     cornerPiece:Piece = None
     # find first corner
     for p in pieces:
@@ -24,7 +27,7 @@ def find_pieces_matches(pieces:list[Piece],debug=True):
             print("no first corner found")
         else:
             print("first corner found",cornerPiece)
-    
+
     borderPieces = [p for p in pieces if p.type == PieceType.EDGE]
 
     def createBorderMatches(currentPiece:Piece,pieces:list[Piece],edgePieces:list[Piece],currentEdgeId,resultArray,x=0,y=0,directionx=0,directiony=0):
@@ -51,7 +54,7 @@ def find_pieces_matches(pieces:list[Piece],debug=True):
         resultArray[y][x] = new_match
 
         if x >= len(resultArray):
-            
+
 
 
     firstEdgeIndex = None
@@ -68,13 +71,13 @@ def find_pieces_matches(pieces:list[Piece],debug=True):
 
 
 
-    
 
-    
-    
-    
 
-        
+
+
+
+
+
 
 
 
@@ -87,53 +90,52 @@ def main():
 
     img = cv2.imread(PATH)
 
-    # Contours
-    print("Finding contours")
-    piece_contours = find_piece_contours(img)
-    n_pieces = len(piece_contours)
-    print(f"{n_pieces} pieces")
-
-    # Corners + edges
-    print("Identifying corners and edges")
-    pieces:list[Piece] = []
-    for i, (contour, box) in enumerate(piece_contours):
-        corners, edges, edge_contours = find_corners(contour)
-        piece = Piece(i, contour, box, corners, edges, edge_contours,img)
+    puzzle: Puzzle = Puzzle.from_image(img)
+    puzzle.solution = np.array([
+        [
+            [22, 2],
+            [0, 1],
+            [6, 0],
+            [20, 2],
+            [7, 3],
+            [11, 3],
+        ],
+        [
+            [21, 0],
+            [17, 2],
+            [5, 1],
+            [4, 0],
+            [1, 2],
+            [3, 2],
+        ],
+        [
+            [12, 2],
+            [10, 0],
+            [19, 1],
+            [14, 0],
+            [2, 1],
+            [8, 0],
+        ],
+        [
+            [16, 1],
+            [13, 1],
+            [15, 3],
+            [9, 2],
+            [23, 3],
+            [18, 1]
+        ]
+    ])
+    print(puzzle)
+    for piece in puzzle.pieces:
+        #cv2.imshow("a", piece.get_rotated_img(0))
         piece.draw(img)
-        pieces.append(piece)
+        #cv2.waitKey(-1)
 
-    edges_d = []
-    form_d = []
-    for i,p in enumerate(pieces):
-        for p2 in pieces[i + 1:]:
-            for e in p.edges:
-                for e2 in p2.edges:
-                    e.matches_with(e2)
-                    if e.type == e2.type:
-                        continue
-                    v = e2.shape_vec[::-1]
-                    form_d.append((p.id, p2.id, e.idx, e2.idx, e.compare_color_edge_with(e2)))
-                    #print("pieces: p1: ", p.id, ", p2: ", p2.id)
-                    #print("edges: p1 edge", e.idx, ", p2 edge: ", e2.idx)
-                    edges_d.append(abs(e.length - e2.length) / e.length)
-                    #plt.scatter(range(e.SHAPE_VEC_SIZE), e.shape_vec + v, label=f"Edge {e2.idx}")
-                #plt.title(f"P{p.id}-E{e.idx} - P{p2.id}")
-                #plt.legend()
-                #plt.show()
-                #input()
+    cv2.imshow("Pieces", img)
+    puzzle.show_solution()
+    cv2.waitKey(-1)
 
-    print("min : ", np.min(edges_d))
-    print("max : ", np.max(edges_d))
-    print("médian : ", np.median(edges_d))
-    print("moyenne : ", np.mean(edges_d))
-    form_d = sorted(form_d, key=lambda x: x[4])
-    for f in form_d:
-        print(f)
-
-    #cv2.imshow("Pieces", img)
-    #cv2.waitKey(-1)
-
-    find_pieces_matches(pieces)
+    find_pieces_matches(puzzle.pieces)
 
 
 if __name__ == '__main__':

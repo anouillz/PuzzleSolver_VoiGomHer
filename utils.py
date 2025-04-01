@@ -1,5 +1,11 @@
+import cv2
 import numpy as np
 
+def barycenter(contour: np.array):
+    M = cv2.moments(contour)
+    cX = int(M["m10"] / M["m00"])
+    cY = int(M["m01"] / M["m00"])
+    return np.array([cX, cY])
 
 # https://stackoverflow.com/a/70664846/11109181
 def resample_polygon(xy: np.ndarray, n_points: int = 100) -> np.ndarray:
