@@ -44,7 +44,7 @@ class Puzzle:
         if self.solution is None:
             raise ValueError("Cannot show solution because puzzle is not solved. Try to call the solve() method first")
 
-        img: np.array = np.zeros(self.img.shape[:2] + (4,), np.uint8)
+        img: np.array = np.zeros((self.img.shape[0] * 3, self.img.shape[1] * 3, 4), np.uint8)
         oy = 0
         for y in range(self.solution.shape[0]):
             height = 0

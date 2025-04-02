@@ -28,7 +28,7 @@ class Piece:
             contour: np.array,
             bbox: tuple[int, int, int, int],
             corners: list[tuple[float, float]],
-            edges: list[EdgeType],
+            edge_types: list[EdgeType],
             edge_contours: list[np.ndarray],
             img:np.ndarray):
         self.id: int = id
@@ -36,19 +36,30 @@ class Piece:
         self.corners_pos: np.array = corners
         self.edges: list[Edge] = [
             Edge(self, i, cont, typ,img)
-            for i, (cont, typ) in enumerate(zip(edge_contours, edges))
+            for i, (cont, typ) in enumerate(zip(edge_contours, edge_types))
         ]
         self.bbox: tuple[int, int, int, int] = bbox
         self.img: np.array = img
         self.center: np.array = tuple(barycenter(self.contour))
 
-        flat_length = len([e for e in edges if e.type == EdgeType.FLAT])
+        flat_length = edge_types.count(EdgeType.FLAT)
         if flat_length == 2:
             self.type = PieceType.CORNER
         elif flat_length == 1:
             self.type = PieceType.EDGE
         else:
             self.type = PieceType.INSIDE
+
+    def get_edge_by_offset(self, top_index: int, dx: int, dy: int) -> Edge:
+        index = top_index
+        if dx == 1:
+            index += 3
+        elif dx == -1:
+            index += 1
+        elif dy == 1:
+            index += 2
+        index %= 4
+        return self.edges[index]
 
     def draw(self, img: np.ndarray):
         for edge in self.edges:

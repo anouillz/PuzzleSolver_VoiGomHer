@@ -87,28 +87,34 @@ class Edge:
         return len(matches) / len(self.color_vec)
 
     # checks edges length and shape vector
-    def matches_with(self, other:Edge):
+    def matches_with(self, other:Edge) -> float:
 
         if self.type == EdgeType.FLAT or other.type == EdgeType.FLAT:
-            return False
+            return np.inf
 
 
         # if length of edges dont match
         if abs(self.length - other.length) / self.length > 0.2:
-            return False
+            return np.inf
 
         # change other vector direction (car tous les edges sont en clockwise)
         v = other.shape_vec[::-1]
 
-        if self.type != other.type:
+        if self.type == other.type:
+            """
             print("----")
             print("P", self.piece.id, " ", self.idx, " ; P", other.piece.id, " ", other.idx)
             print("différence de longueur entre deux edges : ", abs(self.length - other.length) / self.length)
             print("difference de forme: ", np.std(self.shape_vec + v))
             print(self.shape_vec + v)
+            """
+            return np.inf
 
+        return np.std(self.shape_vec + v)
 
+    def get_prev(self) -> Edge:
+        return self.piece.edges[(self.idx - 1) % 4]
 
-
-        return np.linalg.norm(self.shape_vec + v) / self.length < 0.5
+    def get_next(self) -> Edge:
+        return self.piece.edges[(self.idx + 1) % 4]
 
