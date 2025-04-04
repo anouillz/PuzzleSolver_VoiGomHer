@@ -44,19 +44,32 @@ class Puzzle:
         if self.solution is None:
             raise ValueError("Cannot show solution because puzzle is not solved. Try to call the solve() method first")
 
-        img: np.array = np.zeros((self.img.shape[0] * 3, self.img.shape[1] * 3, 4), np.uint8)
+        img: np.array = np.zeros((self.img.shape[0], self.img.shape[1], 4), np.uint8)
         oy = 0
+        max_w = 0
         for y in range(self.solution.shape[0]):
             height = 0
             ox = 0
             for x in range(self.solution.shape[1]):
                 idx, rot = self.solution[y, x]
+                if idx == -1:
+                    ox += max_w
+                    continue
                 piece: Piece = self.pieces[idx]
                 piece_img: np.array = piece.get_rotated_img(rot)
                 mask = piece_img[..., 3] != 0
-                img[oy:oy+piece_img.shape[0], ox:ox+piece_img.shape[1]][mask] = piece_img[mask]
+                x2 = ox + piece_img.shape[1]
+                y2 = oy + piece_img.shape[0]
+                if x2 >= img.shape[1] or y2 >= img.shape[0]:
+                    img2 = np.zeros((max(img.shape[0], y2), max(img.shape[1], x2), 4), np.uint8)
+                    img2[:img.shape[0], :img.shape[1]] = img
+                    img = img2
+                img[oy:y2, ox:x2][mask] = piece_img[mask]
                 height = max(height, piece_img.shape[0])
                 ox += piece_img.shape[1]
+                max_w = max(max_w, piece_img.shape[1])
+                #cv2.imshow("Solution", img)
+                #cv2.waitKey(100)
             oy += height
 
         cv2.imshow("Solution", img)

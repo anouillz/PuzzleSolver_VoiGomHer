@@ -79,24 +79,38 @@ class Piece:
 
     def get_rotated_img(self, rot: int) -> np.array:
         base_angle: float = self.get_base_angle() * 180 / np.pi
-        img = cv2.cvtColor(self.img, cv2.COLOR_BGR2BGRA)
-        mat = cv2.getRotationMatrix2D(np.float32(self.center), base_angle + 45 - rot * 90, 1)
-        mask = np.zeros(img.shape[:2], np.uint8)
+        masked = cv2.cvtColor(self.img, cv2.COLOR_BGR2BGRA)
+        mask = np.zeros(masked.shape[:2], np.uint8)
         cv2.drawContours(mask, [self.contour], -1, (255, 255, 255, 255), cv2.FILLED)
-        cv2.circle(img, np.intp(self.corners_pos[0]), 16, (255, 0, 255, 255), cv2.FILLED)
-        cv2.circle(img, self.center, 2, (0, 0, 255, 255), cv2.FILLED)
-        cv2.imwrite("__1mask.png", mask)
-        rotated_mask = cv2.warpAffine(mask, mat, img.shape[:2])
-        cv2.imwrite("__2rotmask.png", rotated_mask)
-        rotated_img = cv2.warpAffine(img, mat, img.shape[:2])
-        cv2.imwrite("__3rotimg.png", rotated_img)
-        #out = np.zeros([img.shape[0], img.shape[1], 4], np.uint8)
-        #cv2.copyTo(rotated_img, rotated_mask, out)
-        out = rotated_img.copy()
-        out[..., 3] = rotated_mask
-        cv2.imwrite("__4out.png", out)
+        cv2.circle(masked, np.intp(self.corners_pos[0]), 16, (255, 0, 255, 255), cv2.FILLED)
+        cv2.circle(masked, self.center, 2, (0, 0, 255, 255), cv2.FILLED)
+        #cv2.imwrite("__1mask.png", mask)
+        #cv2.imshow("mask", mask)
+        masked[..., 3] = mask
+
+        w = masked.shape[1]
+        h = masked.shape[0]
+        mat = cv2.getRotationMatrix2D(np.float32(self.center), base_angle + 45 - rot * 90, 1)
+        abs_cos = abs(mat[0,0])
+        abs_sin = abs(mat[0,1])
+        bound_w = int(h * abs_sin + w * abs_cos)
+        bound_h = int(h * abs_cos + w * abs_sin)
+        mat[0, 2] += bound_w/2 - w/2
+        mat[1, 2] += bound_h/2 - h/2
+        rotated = cv2.warpAffine(masked, mat, (bound_w, bound_h))
+        rotated_mask = cv2.warpAffine(mask, mat, (bound_w, bound_h))
+        #cv2.imwrite("__3rotimg.png", rotated)
+        #cv2.imshow("rotated", rotated)
+        #cv2.imwrite("__4rotmask.png", rotated_mask)
+        #cv2.imshow("rotated mask", rotated_mask)
+
         coords = cv2.findNonZero(rotated_mask)
-        x, y, w, h = cv2.boundingRect(coords)
+        mx, my, mw, mh = cv2.boundingRect(coords)
+
+        cropped = rotated[my:my+mh, mx:mx+mw]
+        #cv2.imwrite("__5cropped.png", cropped)
+        #cv2.imshow("cropped", cropped)
+
         #cv2.waitKey(-1)
-        cv2.imwrite("__5cropped.png", out[y:y+h, x:x+w, :])
-        return out[y:y+h, x:x+w, :]
+
+        return cropped
