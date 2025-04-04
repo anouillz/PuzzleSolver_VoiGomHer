@@ -42,7 +42,8 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
             x = 0,
             y = 0,
             dx = 0,
-            dy = 0) -> bool:
+            dy = 0,
+            corner_placed = 0)-> bool:
 
         print(f"Remaining: {len(remainingPieces)} / {len(pieces)} / {x=}, {y=}, {dx=}, {dy=}, lastPiece={result[y - dy, x - dx]}")
         if len(remainingPieces) == 0:
@@ -57,8 +58,24 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
         prevEdgeIsFlat = prevEdge.type == EdgeType.FLAT
         nextEdgeIsFlat = nextEdge.type == EdgeType.FLAT
 
+
         matchValues = []
         for p in remainingPieces:
+
+            if p.type ==  PieceType.CORNER:
+                if corner_placed == 3 and x != 0:
+                    continue
+
+                if corner_placed == 2:
+                    area = (x + 1) * (y + 1)
+                    if area != len(pieces):
+                        continue
+
+            elif corner_placed == 2:
+                area = (x + 1) * (y + 1)
+                if area >= len(pieces):
+                    continue
+
             for i, e in enumerate(p.edges):
                 if prevEdgeIsFlat != (e.get_next().type == EdgeType.FLAT):
                     continue
@@ -122,10 +139,16 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
                     return True
 
                 print("    Some pieces left, testing another piece")
-                continue
+
+                if edge.piece.type == PieceType.CORNER:
+                    continue
+
+                return False
+
+
 
             result[y, x] = new_match
-            if createBorderMatches(remainingPieces2, x2, y2, dx2, dy2):
+            if createBorderMatches(remainingPieces2, x2, y2, dx2, dy2, corner_placed + 1 if edge.piece.type == PieceType.CORNER else corner_placed):
                 return True
 
             result[y, x] = [-1, -1]
@@ -149,7 +172,7 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
         )
     )
 
-    if not createBorderMatches(remainingPieces, x=1, dx=1):
+    if not createBorderMatches(remainingPieces, x=1, dx=1, corner_placed=1):
         print("Could not find a solution !")
         return None
     return result
