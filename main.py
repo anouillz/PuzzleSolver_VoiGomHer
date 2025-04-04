@@ -1,3 +1,5 @@
+import time
+
 import cv2
 from matplotlib import pyplot as plt
 
@@ -6,12 +8,20 @@ from corners import find_corners
 from piece import Piece,PieceType
 from edge import Edge,EdgeType
 import numpy as np
+from typing import Optional
 
 from puzzle import Puzzle
 
-PATH = "res/24_pieces_sweater_kevin_small.jpg"
-#PATH = "res/49_pieces_sweater_kevin_small2.jpg"
+PATH = "res/49.jpg"
 #PATH = "res/49.jpg"
+
+OFFSETS = [
+    (0,-1),
+    (-1,0),
+    (0,1),
+    (1,0),
+]
+
 
 def find_pieces_matches(pieces: list[Piece], debug: bool = True):
     """result = [
@@ -37,6 +47,22 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
     def rotate(dx: int, dy: int) -> tuple[int, int]:
         return -dy, dx
 
+    def get_edges_at(x, y) -> list[Optional[Edge]]:
+        edges: list[Optional[Edge]] = []
+        for dx, dy in OFFSETS:
+            x2 = x + dx
+            y2 = y + dy
+            edge = None
+            if 0 <= x2 < result.shape[1] and 0 <= y2 < result.shape[0]:
+                piece_id, top_idx = result[y2, x2]
+                if piece_id != -1:
+                    piece = pieces[piece_id]
+                    edge = piece.get_edge_by_offset(top_idx, -dx, -dy)
+
+            edges.append(edge)
+
+        return edges
+
     def createBorderMatches(
             remainingPieces: list[Piece],
             x = 0,
@@ -45,9 +71,9 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
             dy = 0,
             corner_placed = 0)-> bool:
 
-        print(f"Remaining: {len(remainingPieces)} / {len(pieces)} / {x=}, {y=}, {dx=}, {dy=}, lastPiece={result[y - dy, x - dx]}")
+        #print(f"Remaining: {len(remainingPieces)} / {len(pieces)} / {x=}, {y=}, {dx=}, {dy=}, lastPiece={result[y - dy, x - dx]}")
         if len(remainingPieces) == 0:
-            print("  Weird, remainingPieces is empty !")
+            #print("  Weird, remainingPieces is empty !")
             return False
 
         currentPiece: Piece = pieces[result[y - dy, x - dx, 0]]
@@ -57,6 +83,8 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
         nextEdge = currentEdge.get_next()
         prevEdgeIsFlat = prevEdge.type == EdgeType.FLAT
         nextEdgeIsFlat = nextEdge.type == EdgeType.FLAT
+
+        neighborEdges = get_edges_at(x, y)
 
 
         matchValues = []
@@ -83,12 +111,42 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
                 if nextEdgeIsFlat != (e.get_prev().type == EdgeType.FLAT):
                     continue
 
-                matchValue = currentEdge.matches_with(e)
+                # ----
+
+                matchValue = 0
+
+                # neighborEdges = [top, left, bottom, right]
+                #
+                # i = 0 / dx=1 / left
+                target_i = 0
+                if dx == 1:
+                    target_i = 1
+                elif dy == -1:
+                    target_i = 2
+                elif dx == -1:
+                    target_i = 3
+                offset = (i - target_i)
+                # target_i = 1
+                # offset = 2
+
+                for j, ne in enumerate(neighborEdges):
+                    edgeToCheck = p.edges[(j + offset) % 4]
+
+                    if ne is None:
+                        continue
+
+                    matchValue += edgeToCheck.matches_with(ne)
+
                 if matchValue != np.inf:
                     matchValues.append((e, matchValue))
 
+                # ----
+                #matchValue = currentEdge.matches_with(e)
+                #if matchValue != np.inf:
+                #    matchValues.append((e, matchValue))
+
         matchValues = sorted(matchValues, key=lambda m: m[1])
-        print(f"  {len(matchValues)} possible pieces")
+        #print(f"  {len(matchValues)} possible pieces")
         for edge, val in matchValues:
             top_id = edge.idx
             if dx == 1:
@@ -100,7 +158,7 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
             top_id %= 4
 
             new_match = (edge.piece.id, top_id)
-            print(f"    Placing piece {new_match} ({val=})")
+            #print(f"    Placing piece {new_match} ({val=})")
             remainingPieces2 = list(
                 filter(
                     lambda p: p.id != edge.piece.id,
@@ -110,52 +168,52 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
 
             dx2, dy2 = dx, dy
             if edge.piece.type == PieceType.CORNER:
-                print("    Corner placed, turning right")
+                #print("    Corner placed, turning right")
                 dx2, dy2 = rotate(dx, dy)
 
             x2 = x + dx2
             y2 = y + dy2
 
             if y2 < 0 or y2 >= result.shape[0] or x2 < 0 or x2 >= result.shape[1]:
-                print("    Arrived at edge ! Testing another piece")
+                #print("    Arrived at edge ! Testing another piece")
                 continue
 
             if result[y2, x2, 0] != -1:
-                print(f"    There's already a piece here ({result[y2, x2]}), turning right")
+                #print(f"    There's already a piece here ({result[y2, x2]}), turning right")
                 dx2, dy2 = rotate(dx2, dy2)
 
             x2 = x + dx2
             y2 = y + dy2
 
             if y2 < 0 or y2 >= result.shape[0] or x2 < 0 or x2 >= result.shape[1]:
-                print("    Arrived at edge ! (2) Testing another piece")
+                #print("    Arrived at edge ! (2) Testing another piece")
                 continue
 
             if result[y2, x2, 0] != -1:
-                print("    Reached a dead-end")
+                #print("    Reached a dead-end")
                 if len(remainingPieces2) == 0:
-                    print("    All pieces have been placed, found a solution")
+                    #print("    All pieces have been placed, found a solution")
                     result[y, x] = new_match
                     return True
 
-                print("    Some pieces left, testing another piece")
+                #print("    Some pieces left, testing another piece")
 
                 if edge.piece.type == PieceType.CORNER:
                     continue
 
                 return False
 
-
-
             result[y, x] = new_match
             if createBorderMatches(remainingPieces2, x2, y2, dx2, dy2, corner_placed + 1 if edge.piece.type == PieceType.CORNER else corner_placed):
                 return True
 
             result[y, x] = [-1, -1]
-            print(f"    Removing {(x, y)} = {result[y, x]}, testing another piece")
+            #print(f"    Removing {(x, y)} = {result[y, x]}, testing another piece")
 
         print("  No solution found, backtracking")
         return False
+
+
 
     flat_indices = []
     for i, e in enumerate(cornerPiece.edges):
@@ -172,7 +230,11 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
         )
     )
 
-    if not createBorderMatches(remainingPieces, x=1, dx=1, corner_placed=1):
+    t0 = time.time()
+    solved = createBorderMatches(remainingPieces, x=1, dx=1, corner_placed=1)
+    t1 = time.time()
+    print(f"Time taken: {t1 - t0:.2f} seconds")
+    if not solved:
         print("Could not find a solution !")
         return None
     return result
