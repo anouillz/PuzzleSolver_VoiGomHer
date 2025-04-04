@@ -37,6 +37,29 @@ class Puzzle:
 
         return Puzzle(pieces, img)
 
+    @staticmethod
+    def from_images(imgs: list[np.array]) -> Puzzle:
+        pieces = []
+        piece_id = 0
+        for i, img in enumerate(imgs):
+            print(f"Processing image {i+1}/{len(imgs)}")
+
+            # Contours
+            print("Finding contours")
+            piece_contours = find_piece_contours(img)
+            n_pieces = len(piece_contours)
+            print(f"{n_pieces} pieces")
+
+            # Corners + edges
+            print("Identifying corners and edges")
+            for contour, box in piece_contours:
+                corners, edges, edge_contours = find_corners(contour)
+                piece = Piece(piece_id, contour, box, corners, edges, edge_contours, img)
+                pieces.append(piece)
+                piece_id += 1
+
+        return Puzzle(pieces, None)
+
     def solve(self):
         pass
 
