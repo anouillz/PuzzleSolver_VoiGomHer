@@ -12,7 +12,7 @@ from typing import Optional
 
 from puzzle import Puzzle
 
-PATH = "res/49.jpg"
+PATH = "res/24_pieces_sweater_kevin_small.jpg"
 #PATH = "res/49.jpg"
 
 OFFSETS = [

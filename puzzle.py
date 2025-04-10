@@ -17,7 +17,7 @@ class Puzzle:
         self.solution: Optional[np.array] = None
 
     def __repr__(self):
-        return f"<Puzzle {len(self.pieces)} pieces - {"UNSOLVED" if self.solution is None else "SOLVED"}>"
+        return f"<Puzzle {len(self.pieces)} pieces - {'UNSOLVED' if self.solution is None else 'SOLVED'}>"
 
     @staticmethod
     def from_image(img: np.array) -> Puzzle:
