@@ -238,18 +238,16 @@ def main():
     print("##########################################")
     print()
 
-    #img = cv2.imread(PATH)
+    img = cv2.imread(PATH)
     imgs = [
         cv2.imread("res/49_pieces_eagles/1.jpg"),
         cv2.imread("res/49_pieces_eagles/2.jpg"),
         cv2.imread("res/49_pieces_eagles/3.jpg"),
     ]
 
-    #puzzle: Puzzle = Puzzle.from_image(img)
-    puzzle: Puzzle = Puzzle.from_images(imgs)
     puzzle: Puzzle = Puzzle.from_image(img)
-    #puzzle: Puzzle = Puzzle.from_images(imgs)
-    puzzle.solution = np.array([
+    puzzle: Puzzle = Puzzle.from_images(imgs)
+    solution24 = np.array([
         [
             [22, 2],
             [0, 1],
@@ -283,7 +281,7 @@ def main():
             [18, 1]
         ]
     ])
-    puzzle.solution = np.array([
+    solution49 = np.array([
         [
             (14, 3),
             (23, 3),
@@ -348,17 +346,10 @@ def main():
             (15, 3)
         ]
     ])
-    print(puzzle)
-    """
-    for piece in puzzle.pieces:
-        #cv2.imshow("a", piece.get_rotated_img(0))
-        piece.draw(img)
-        #cv2.waitKey(-1)
-    """
 
-    """
-    cv2.imshow("Pieces", img)
-    """
+    solution24 = np.rot90(solution24, 1)
+    solution24[..., 1] = (solution24[..., 1] - 1) % 4
+    print(puzzle)
 
     input("Solve ?\n> ")
 
@@ -370,9 +361,28 @@ def main():
     print(s.shape)
     print(s[..., 0])
 
+    sol = solution49
+    wrong = 0
+    wrong_rot = 0
+    correct = 0
+    for y in range(h):
+        for x in range(w):
+            guess_p, guess_e = puzzle.solution[y, x]
+            real_p, real_e = sol[y, x]
+            if guess_p != real_p:
+                wrong += 1
+            elif guess_e != real_e:
+                wrong_rot += 1
+            else:
+                correct += 1
+
+    total = h * w
+
+    print(f"Wrong rotation: {wrong_rot} -> {wrong_rot / total * 100:.2f}%")
+    print(f"Wrong piece: {wrong} -> {wrong / total * 100:.2f}%")
+    print(f"Correct: {correct} -> {correct / total * 100:.2f}%")
     puzzle.show_solution()
     cv2.waitKey(-1)
-
 
 
 if __name__ == '__main__':
