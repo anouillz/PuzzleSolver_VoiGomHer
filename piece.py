@@ -67,7 +67,17 @@ class Piece:
             cv2.polylines(img, [edge.contour], False, col, 2)
 
         for pt in np.int32(self.corners_pos):
-            cv2.circle(img, pt, 3, self.CORNER_COLOR, -1)
+            cv2.circle(img, pt, 5, self.CORNER_COLOR, -1)
+
+        cv2.putText(
+            img,
+            str(self.id),
+            self.center,
+            cv2.FONT_HERSHEY_COMPLEX,
+            2,
+            (255, 255, 255),
+            3
+        )
 
     def get_base_angle(self) -> float:
         center = np.mean(self.corners_pos, axis=0)

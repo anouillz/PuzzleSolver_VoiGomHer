@@ -1,27 +1,23 @@
 import time
-
-import cv2
-from matplotlib import pyplot as plt
-
-from contours import find_piece_contours
-from corners import find_corners
-from piece import Piece,PieceType
-from edge import Edge,EdgeType
-import numpy as np
 from typing import Optional
 
+import cv2
+import numpy as np
+
+from edge import Edge, EdgeType
+from piece import Piece, PieceType
 from puzzle import Puzzle
 
 PATH = "res/24_pieces_sweater_kevin_small.jpg"
+#PATH = "res/49_pieces_sweater_kevin_small2.jpg"
 #PATH = "res/49.jpg"
 
 OFFSETS = [
-    (0,-1),
-    (-1,0),
-    (0,1),
-    (1,0),
+    ( 0, -1),
+    (-1,  0),
+    ( 0,  1),
+    ( 1,  0),
 ]
-
 
 def find_pieces_matches(pieces: list[Piece], debug: bool = True):
     """result = [
@@ -140,11 +136,6 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
                 if matchValue != np.inf:
                     matchValues.append((e, matchValue))
 
-                # ----
-                #matchValue = currentEdge.matches_with(e)
-                #if matchValue != np.inf:
-                #    matchValues.append((e, matchValue))
-
         matchValues = sorted(matchValues, key=lambda m: m[1])
         #print(f"  {len(matchValues)} possible pieces")
         for edge, val in matchValues:
@@ -210,7 +201,7 @@ def find_pieces_matches(pieces: list[Piece], debug: bool = True):
             result[y, x] = [-1, -1]
             #print(f"    Removing {(x, y)} = {result[y, x]}, testing another piece")
 
-        print("  No solution found, backtracking")
+        #print("  No solution found, backtracking")
         return False
 
 
@@ -247,9 +238,17 @@ def main():
     print("##########################################")
     print()
 
-    img = cv2.imread(PATH)
+    #img = cv2.imread(PATH)
+    imgs = [
+        cv2.imread("res/49_pieces_eagles/1.jpg"),
+        cv2.imread("res/49_pieces_eagles/2.jpg"),
+        cv2.imread("res/49_pieces_eagles/3.jpg"),
+    ]
 
+    #puzzle: Puzzle = Puzzle.from_image(img)
+    puzzle: Puzzle = Puzzle.from_images(imgs)
     puzzle: Puzzle = Puzzle.from_image(img)
+    #puzzle: Puzzle = Puzzle.from_images(imgs)
     puzzle.solution = np.array([
         [
             [22, 2],
@@ -284,13 +283,84 @@ def main():
             [18, 1]
         ]
     ])
+    puzzle.solution = np.array([
+        [
+            (14, 3),
+            (23, 3),
+            (1, 0),
+            (25, 3),
+            (18, 3),
+            (5, 0),
+            (48, 0)
+        ],
+        [
+            (26, 3),
+            (22, 3),
+            (6, 0),
+            (30, 0),
+            (0, 1),
+            (2, 1),
+            (31, 2)
+        ],
+        [
+            (12, 0),
+            (8, 1),
+            (21, 0),
+            (44, 3),
+            (17, 3),
+            (42, 3),
+            (33, 2)
+        ],
+        [
+            (19, 0),
+            (4, 3),
+            (13, 0),
+            (34, 3),
+            (29, 1),
+            (39, 1),
+            (45, 0)
+        ],
+        [
+            (11, 0),
+            (16, 1),
+            (24, 1),
+            (43, 1),
+            (36, 0),
+            (47, 3),
+            (46, 3)
+        ],
+        [
+            (37, 2),
+            (32, 0),
+            (9, 2),
+            (20, 1),
+            (3, 2),
+            (40, 0),
+            (38, 2)
+        ],
+        [
+            (35, 3),
+            (41, 2),
+            (27, 0),
+            (10, 2),
+            (28, 2),
+            (7, 0),
+            (15, 3)
+        ]
+    ])
     print(puzzle)
+    """
     for piece in puzzle.pieces:
         #cv2.imshow("a", piece.get_rotated_img(0))
         piece.draw(img)
         #cv2.waitKey(-1)
+    """
 
+    """
     cv2.imshow("Pieces", img)
+    """
+
+    input("Solve ?\n> ")
 
     puzzle.solution = find_pieces_matches(puzzle.pieces)
     coords = np.argwhere(puzzle.solution[..., 0] != -1)

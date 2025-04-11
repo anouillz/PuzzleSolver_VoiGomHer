@@ -38,10 +38,13 @@ def find_piece_contours(image):
     # Binary image → find contours (only external)
     contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    cv2.drawContours(thresh, contours, -1, (255, 255, 255), cv2.FILLED)
+    thresh = cv2.erode(thresh, kernel, iterations=1)
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     areas = [cv2.contourArea(contour) for contour in contours]
 
     # Filter out tiny (probably dust) and very large (not pieces) contours
-    a1 = 100
+    a1 = image.shape[0] * image.shape[1] / 400
     a2 = image.shape[0] * image.shape[1] / 32
     with_areas = [(area, cont) for area, cont in zip(areas, contours) if a1 <= area <= a2]
 
