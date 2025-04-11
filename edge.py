@@ -28,6 +28,7 @@ class Edge:
     COLOR_VEC_SIZE = 50
     COLOR_RECTANGLE_SIZE = 5
     COLOR_SAMPLE_INSET = 10
+    CACHE = {}
 
     def __init__(self, piece: Piece, idx: int, contour: np.array, type: EdgeType,img:np.ndarray):
         self.piece: Piece = piece
@@ -97,9 +98,9 @@ class Edge:
             distance_luv = self.perceptual_luv_distance(r1,g1,b1,r2,b2,g2)
             # distance_cie2000 = 0.5*self.cie2000_color_distance(r1,g1,b1,r2,b2,g2)
             matches.append(distance_hue)
+        max_dist = math.sqrt(180*180 + 100*100*2)
 
-
-        return sum(matches)
+        return np.sum(np.array(matches) / max_dist) / self.COLOR_VEC_SIZE
 
 
 
@@ -159,6 +160,12 @@ class Edge:
 
     # checks edges length and shape vector
     def matches_with(self, other:Edge) -> float:
+        p1, e1, p2, e2 = self.piece.id, self.idx, other.piece.id, other.idx
+        if p1 > p2:
+            p1, p2, e1, e2 = p2, p1, e2, e1
+        id = (p1, e1, p2, e2)
+        if id in self.CACHE:
+            return self.CACHE[id]
 
         if self.type == EdgeType.FLAT or other.type == EdgeType.FLAT:
             return np.inf
@@ -183,7 +190,7 @@ class Edge:
             return np.inf
 
         # return_value = np.std(self.shape_vec+v)
-        return_value = self.compare_color_edge_with(other)
+        color_diff = self.compare_color_edge_with(other)
         #return return_value
 
         #return np.std(self.shape_vec + v)
@@ -191,7 +198,12 @@ class Edge:
         diff2 = self.shape_vec2 - v2
         #return np.mean(np.abs(diff)) / np.std(diff)
         #return np.sum(np.pow(diff, 2))
-        return np.std(diff) + np.std(diff2)
+        shape_diff = np.std(diff)
+        shape_diff2 = np.std(diff2)
+        return_value = color_diff + shape_diff * 20 + shape_diff2 * 20
+
+        self.CACHE[id] = return_value
+        return return_value
 
     def get_prev(self) -> Edge:
         return self.piece.edges[(self.idx - 1) % 4]
