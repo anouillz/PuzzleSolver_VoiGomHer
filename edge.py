@@ -17,7 +17,7 @@ class EdgeType(IntEnum):
 
 
 class Edge:
-    SHAPE_VEC_SIZE = 30
+    SHAPE_VEC_SIZE = 60
     COLOR_VEC_SIZE = 50
     COLOR_RECTANGLE_SIZE = 4
     COLOR_SAMPLE_INSET = 7
@@ -28,25 +28,26 @@ class Edge:
         self.contour: np.array = contour
         self.type: EdgeType = type
         self.length: float = np.linalg.norm(self.contour[0] - self.contour[-1])
-        self.shape_vec: np.array = self.compute_shape_vec()
+        self.shape_vec, self.shape_vec2 = self.compute_shape_vec()
         self.color_vec: np.array = self.compute_color_vec(img)
 
     def compute_shape_vec(self):
         vect = []
+        vect2 = []
         c1 = self.contour[0][0]
         c2 = self.contour[-1][0]
         line = c2 - c1
         n = np.array([-line[1], line[0]])
-        down = np.linalg.norm(n)
+        norm = np.linalg.norm(n)
 
-        e = resample_polygon(self.contour[:, 0, :], self.SHAPE_VEC_SIZE)
+        pts = resample_polygon(self.contour[:, 0, :], self.SHAPE_VEC_SIZE)
 
-        for i in e:
-            v = i - c1
-            s = np.dot(v, n)
-            vect.append(s / down)
+        for pt in pts:
+            v = pt - c1
+            vect.append(np.dot(v, n) / norm / norm)
+            vect2.append(np.dot(v, line) / norm / norm)
 
-        return np.array(vect)
+        return np.array(vect), np.array(vect2)
 
     def compute_color_vec(self,img:np.ndarray):
         resampled_contour = resample_polygon(self.contour[:, 0, :],self.COLOR_VEC_SIZE)
@@ -99,6 +100,7 @@ class Edge:
 
         # change other vector direction (car tous les edges sont en clockwise)
         v = other.shape_vec[::-1]
+        v2 = other.shape_vec2[::-1]
 
         if self.type == other.type:
             """
@@ -110,7 +112,12 @@ class Edge:
             """
             return np.inf
 
-        return np.std(self.shape_vec + v)
+        #return np.std(self.shape_vec + v)
+        diff = self.shape_vec + v
+        diff2 = self.shape_vec2 + v2
+        #return np.mean(np.abs(diff)) / np.std(diff)
+        #return np.sum(np.pow(diff, 2))
+        return np.std(diff) + np.std(diff2)
 
     def get_prev(self) -> Edge:
         return self.piece.edges[(self.idx - 1) % 4]
