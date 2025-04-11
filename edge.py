@@ -165,12 +165,12 @@ class Edge:
 
 
         # if length of edges dont match
-        if abs(self.length - other.length) / self.length > 0.2:
-            return np.inf
+        """if abs(self.length - other.length) / self.length > 0.2:
+            return np.inf"""
 
         # change other vector direction (car tous les edges sont en clockwise)
         v = other.shape_vec[::-1]
-        v2 = other.shape_vec2[::-1]
+        v2 = 1 - other.shape_vec2[::-1]
 
         if self.type == other.type:
             """
@@ -188,7 +188,7 @@ class Edge:
 
         #return np.std(self.shape_vec + v)
         diff = self.shape_vec + v
-        diff2 = self.shape_vec2 + v2
+        diff2 = self.shape_vec2 - v2
         #return np.mean(np.abs(diff)) / np.std(diff)
         #return np.sum(np.pow(diff, 2))
         return np.std(diff) + np.std(diff2)
