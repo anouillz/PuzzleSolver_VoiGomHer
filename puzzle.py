@@ -30,11 +30,14 @@ class Puzzle:
         # Corners + edges
         print("Identifying corners and edges")
         pieces = []
+        img2 = img.copy()
         for i, (contour, box) in enumerate(piece_contours):
             corners, edges, edge_contours = find_corners(contour)
             piece = Piece(i, contour, box, corners, edges, edge_contours, img)
             pieces.append(piece)
+            piece.draw(img2)
 
+        cv2.imwrite(f"/tmp/img.jpg", img2)
         return Puzzle(pieces, img)
 
     @staticmethod
@@ -49,6 +52,7 @@ class Puzzle:
             piece_contours = find_piece_contours(img)
             n_pieces = len(piece_contours)
             print(f"{n_pieces} pieces")
+            img2 = img.copy()
 
             # Corners + edges
             print("Identifying corners and edges")
@@ -56,7 +60,11 @@ class Puzzle:
                 corners, edges, edge_contours = find_corners(contour)
                 piece = Piece(piece_id, contour, box, corners, edges, edge_contours, img)
                 pieces.append(piece)
+                piece.draw(img2)
                 piece_id += 1
+
+            cv2.imwrite(f"/tmp/img_{i}.jpg", img2)
+            cv2.waitKey(-1)
 
         return Puzzle(pieces, None)
 
@@ -67,7 +75,14 @@ class Puzzle:
         if self.solution is None:
             raise ValueError("Cannot show solution because puzzle is not solved. Try to call the solve() method first")
 
-        img: np.array = np.zeros((self.img.shape[0], self.img.shape[1], 4), np.uint8)
+        coords = np.argwhere(self.solution[..., 0] != -1)
+        y, x, h, w = cv2.boundingRect(coords)
+        #np.savetxt("/tmp/sol.txt", self.solution[..., 0], fmt="%4d")
+        self.solution = self.solution[y:y+h,x:x+w]
+        print(self.solution.shape)
+        print(self.solution[..., 0])
+
+        img: np.array = np.zeros((0, 0, 4), np.uint8)
         oy = 0
         max_w = 0
         for y in range(self.solution.shape[0]):

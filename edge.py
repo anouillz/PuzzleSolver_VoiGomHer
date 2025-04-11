@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 from enum import IntEnum
 from typing import TYPE_CHECKING
-import cv2
+
 import numpy as np
 
 from utils import resample_polygon
@@ -118,3 +119,5 @@ class Edge:
     def get_next(self) -> Edge:
         return self.piece.edges[(self.idx + 1) % 4]
 
+    def __repr__(self):
+        return f"<Edge {self.idx} in piece {self.piece.id} - {self.type.name}>"
