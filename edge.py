@@ -25,9 +25,9 @@ class EdgeType(IntEnum):
 
 class Edge:
     SHAPE_VEC_SIZE = 60
-    COLOR_VEC_SIZE = 50
-    COLOR_RECTANGLE_SIZE = 5
-    COLOR_SAMPLE_INSET = 10
+    COLOR_VEC_SIZE = 100
+    COLOR_SAMPLE_RATIO = 1/30
+    COLOR_SAMPLE_INSET_RATIO = 1 + 1/20
     CACHE = {}
 
     def __init__(self, piece: Piece, idx: int, contour: np.array, type: EdgeType,img:np.ndarray):
@@ -58,6 +58,13 @@ class Edge:
         return np.array(vect), np.array(vect2)
 
     def compute_color_vec(self,img:np.ndarray):
+        c1 = self.contour[0][0]
+        c2 = self.contour[-1][0]
+        rectangle_size = np.linalg.norm(c2-c1) * self.COLOR_SAMPLE_RATIO
+
+        sample_inset = rectangle_size * self.COLOR_SAMPLE_INSET_RATIO
+
+
         resampled_contour = resample_polygon(self.contour[:, 0, :],self.COLOR_VEC_SIZE)
         color_vec = []
         for i in range(1,len(resampled_contour)-1):
@@ -70,9 +77,9 @@ class Edge:
             tangant = (tangant_after+tangant_before)/2
             normale = np.array([-tangant[1],tangant[0]])
             normale = normale / np.linalg.norm(normale)
-            taille = self.COLOR_RECTANGLE_SIZE
+            taille = int(rectangle_size)
 
-            now = np.int32(now - normale * self.COLOR_SAMPLE_INSET)
+            now = np.int32(now - normale * sample_inset)
             rect = img[now[1]-taille:now[1] + taille+1,now[0]-taille:now[0]+taille]
             color_mean = np.mean(rect,axis=(0,1))
             color_vec.append(color_mean)
@@ -141,7 +148,7 @@ class Edge:
             db * db
         )/441.672
 
-    def hue_color_distance(self,h1,s1,v1,h2,s2,v2,hue_weight=2,sat_weight=1,val_weight=1) -> float:
+    def hue_color_distance(self,h1,s1,v1,h2,s2,v2,hue_weight=3,sat_weight=1,val_weight=1) -> float:
         hue_diff = min(abs(h1 - h2), 360 - abs(h1 - h2))
         distance = math.sqrt(
             (hue_weight * hue_diff) ** 2 +
