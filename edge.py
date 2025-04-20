@@ -5,11 +5,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import colorsys,math
-from colormath.color_objects import sRGBColor, LabColor, LuvColor
-
-from colormath.color_conversions import convert_color
-
-from colormath.color_diff import delta_e_cie2000
 
 from utils import resample_polygon
 
@@ -101,52 +96,10 @@ class Edge:
             h2,s2,v2 = h2*360,s2*100,v2*100
 
             distance_hue = self.hue_color_distance(h1,s1,v1,h2,s2,v2)
-            distance_rgb = self.rgb_color_distance(r1,g1,b1,r2,b2,g2)
-            distance_luv = self.perceptual_luv_distance(r1,g1,b1,r2,b2,g2)
-            # distance_cie2000 = 0.5*self.cie2000_color_distance(r1,g1,b1,r2,b2,g2)
             matches.append(distance_hue)
         max_dist = math.sqrt(180*180 + 100*100*2)
 
         return np.sum(np.array(matches) / max_dist) / self.COLOR_VEC_SIZE
-
-
-
-    def perceptual_luv_distance(self,r1, g1, b1, r2, g2, b2):
-        """
-        Calcule la distance perceptuelle entre deux couleurs en utilisant L*u*v* et une tolérance sur la teinte, saturation et luminosité.
-        """
-        # Normaliser les valeurs RGB entre 0 et 1
-        color1_rgb = sRGBColor(r1 / 255.0, g1 / 255.0, b1 / 255.0)
-        color2_rgb = sRGBColor(r2 / 255.0, g2 / 255.0, b2 / 255.0)
-
-        # Conversion en Luv
-        color1_luv = convert_color(color1_rgb, LuvColor)
-        color2_luv = convert_color(color2_rgb, LuvColor)
-
-        # Extraire les composantes L*, u*, v*
-        l1, u1, v1 = color1_luv.luv_l, color1_luv.luv_u, color1_luv.luv_v
-        l2, u2, v2 = color2_luv.luv_l, color2_luv.luv_u, color2_luv.luv_v
-
-        # Calcul de la distance euclidienne dans l'espace Luv
-        color_distance = math.sqrt((l1 - l2)**2 + (u1 - u2)**2 + (v1 - v2)**2) / 300.0
-
-
-        return color_distance
-
-
-    def rgb_color_distance(self,r1,g1,b1,r2,g2,b2) -> float:
-        r1, g1, b1 = int(r1), int(g1), int(b1)
-        r2, g2, b2 = int(r2), int(g2), int(b2)
-
-        dr = r1 - r2
-        dg = g1 - g2
-        db = b1 - b2
-
-        return math.sqrt(
-            dr * dr +
-            dg * dg +
-            db * db
-        )/441.672
 
     def hue_color_distance(self,h1,s1,v1,h2,s2,v2,hue_weight=3,sat_weight=1,val_weight=1) -> float:
         hue_diff = min(abs(h1 - h2), 360 - abs(h1 - h2))
@@ -156,14 +109,6 @@ class Edge:
             (val_weight * (v1 - v2)) ** 2
             )
         return distance
-
-    def cie2000_color_distance(self,r1,g1,b1,r2,g2,b2) -> float:
-        color1_rgb = sRGBColor(r1,g1,b1);
-        color2_rgb = sRGBColor(r2,b2,g2);
-        color1_lab = convert_color(color1_rgb, LabColor);
-        color2_lab = convert_color(color2_rgb, LabColor);
-        delta_e = delta_e_cie2000(color1_lab, color2_lab);
-        return delta_e
 
     # checks edges length and shape vector
     def matches_with(self, other:Edge) -> float:
