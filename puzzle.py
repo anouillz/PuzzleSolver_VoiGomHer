@@ -31,10 +31,10 @@ class Puzzle:
         return f"<Puzzle {len(self.pieces)} pieces - {'UNSOLVED' if self.solution is None else 'SOLVED'}>"
 
     @staticmethod
-    def from_image(img: np.array) -> Puzzle:
+    def from_image(img: np.array, img2: np.array, img3: np.array, img4: np.array) -> Puzzle:
         # Contours
         print("Finding contours")
-        piece_contours = find_piece_contours(img)
+        piece_contours = find_piece_contours(img, img2, img3, img4)
         n_pieces = len(piece_contours)
         print(f"{n_pieces} pieces")
 

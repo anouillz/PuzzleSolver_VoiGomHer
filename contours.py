@@ -1,7 +1,34 @@
 import cv2
 import numpy as np
 
-def find_piece_contours(image):
+
+def find_pieces_mask(red, green, blue):
+    ret, mask_r = cv2.threshold(red[..., 2], 190, 255, cv2.THRESH_BINARY)
+    ret, mask_g = cv2.threshold(green[..., 1], 190, 255, cv2.THRESH_BINARY)
+    ret, mask_b = cv2.threshold(blue[..., 0], 190, 255, cv2.THRESH_BINARY)
+    bg_mask = np.mean([mask_r, mask_g, mask_b], axis=0)
+    bg_mask = cv2.GaussianBlur(bg_mask, (7, 7), 5).astype(np.uint8)
+    contours, hrcy = cv2.findContours(bg_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    largest_area = 0
+    largest_i = -1
+    for i, contour in enumerate(contours):
+        area = cv2.contourArea(contour)
+        if area > largest_area:
+            largest_area = area
+            largest_i = i
+
+    screen_contour = contours[largest_i]
+    screen_mask = np.zeros((red.shape[0], red.shape[1]), dtype=np.uint8)
+    cv2.drawContours(screen_mask, [screen_contour], 0, (255, 255, 255), cv2.FILLED)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+    screen_mask = cv2.erode(screen_mask, kernel, iterations=5)
+
+    full_mask = cv2.bitwise_and(screen_mask, cv2.bitwise_not(bg_mask))
+    ret, full_mask = cv2.threshold(full_mask, 180, 255, cv2.THRESH_BINARY)
+
+    return full_mask
+
+def find_piece_contours(image, red, green, blue):
     """
     Finds the contours of puzzle pieces in the given image
     :param image: the original color image
@@ -9,42 +36,27 @@ def find_piece_contours(image):
              minAreaRect's box (a rectangular contour)
     """
 
-    # Image → grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    red = cv2.GaussianBlur(red, (7, 7), 2)
+    green = cv2.GaussianBlur(green, (7, 7), 2)
+    blue = cv2.GaussianBlur(blue, (7, 7), 2)
 
-    # Gray → blurred
-    blurred_gray = cv2.GaussianBlur(gray, (7, 7), 2)
+    full_mask = find_pieces_mask(red, green, blue)
 
-    # Blurred → Sobel (edges)
-    grad_x = cv2.Sobel(blurred_gray, cv2.CV_16S, 1, 0, ksize=3, scale=1, delta=0, borderType=cv2.BORDER_DEFAULT)
-    grad_y = cv2.Sobel(blurred_gray, cv2.CV_16S, 0, 1, ksize=3, scale=1, delta=0, borderType=cv2.BORDER_DEFAULT)
-
-    abs_grad_x = cv2.convertScaleAbs(grad_x)
-    abs_grad_y = cv2.convertScaleAbs(grad_y)
-
-    sobel = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
-
-    # Sobel → increase contrasts
-    sobel = cv2.convertScaleAbs(sobel, alpha=2.5, beta=0)
-
-    # Sobel → dilate → erode ←→ thinner but continuous
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-    dilated = cv2.dilate(sobel, kernel, iterations=1)
-    eroded = cv2.erode(dilated, kernel, iterations=1)
-
-    # Sobel → threshold (B&W)
-    ret, thresh = cv2.threshold(eroded, 80, 255, cv2.THRESH_BINARY)
 
     # Binary image → find contours (only external)
-    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(full_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    cv2.drawContours(thresh, contours, -1, (255, 255, 255), cv2.FILLED)
-    thresh = cv2.erode(thresh, kernel, iterations=1)
-    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    #cv2.drawContours(full_mask, contours, -1, (255, 255, 255), cv2.FILLED)
+    #cv2.imwrite("/tmp/04_full_mask2.jpg", full_mask)
+    #thresh = cv2.erode(thresh, kernel, iterations=1)
+    #contours, hierarchy = cv2.findContours(full_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    #im2 = image.copy()
+    #cv2.drawContours(im2, contours, -1, (0, 0, 255), 1)
+    #cv2.imwrite("/tmp/05_contours.jpg", im2)
     areas = [cv2.contourArea(contour) for contour in contours]
 
     # Filter out tiny (probably dust) and very large (not pieces) contours
-    a1 = image.shape[0] * image.shape[1] / 400
+    a1 = image.shape[0] * image.shape[1] / 2000
     a2 = image.shape[0] * image.shape[1] / 32
     with_areas = [(area, cont) for area, cont in zip(areas, contours) if a1 <= area <= a2]
 

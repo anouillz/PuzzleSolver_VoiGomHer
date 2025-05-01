@@ -19,15 +19,27 @@ def main():
     print("##########################################")
     print()
 
-    img = cv2.imread(PATH)
-    imgs = [
+    #img = cv2.imread("res/24_pieces_sweater_kevin_small.jpg")
+    """imgs = [
         cv2.imread("res/49_pieces_eagles/1.jpg"),
         cv2.imread("res/49_pieces_eagles/2.jpg"),
         cv2.imread("res/49_pieces_eagles/3.jpg"),
-    ]
+    ]"""
 
-    puzzle: Puzzle = Puzzle.from_image(img)
-    puzzle: Puzzle = Puzzle.from_images(imgs)
+    #puzzle: Puzzle = Puzzle.from_image(img)
+    #puzzle: Puzzle = Puzzle.from_image(
+    #    cv2.imread("res/24_pieces/white.jpg"),
+    #    cv2.imread("res/24_pieces/red.jpg"),
+    #    cv2.imread("res/24_pieces/green.jpg"),
+    #    cv2.imread("res/24_pieces/blue.jpg"),
+    #)
+    puzzle: Puzzle = Puzzle.from_image(
+        cv2.imread("res/49_pieces/white.jpg"),
+        cv2.imread("res/49_pieces/red.jpg"),
+        cv2.imread("res/49_pieces/green.jpg"),
+        cv2.imread("res/49_pieces/blue.jpg"),
+    )
+    #puzzle: Puzzle = Puzzle.from_images(imgs)
     solution24 = np.array([
         [
             [22, 2],
@@ -134,7 +146,7 @@ def main():
 
     input("Solve ?\n> ")
 
-    puzzle.solve()
+    puzzle.solve(return_first=True)
     coords = np.argwhere(puzzle.solution[..., 0] != -1)
     y, x, h, w = cv2.boundingRect(coords)
     #np.savetxt("/tmp/sol.txt", puzzle.solution[..., 0], fmt="%4d")
@@ -142,26 +154,29 @@ def main():
     print(s.shape)
     print(s[..., 0])
 
-    sol = solution49
-    wrong = 0
-    wrong_rot = 0
-    correct = 0
-    for y in range(h):
-        for x in range(w):
-            guess_p, guess_e = puzzle.solution[y, x]
-            real_p, real_e = sol[y, x]
-            if guess_p != real_p:
-                wrong += 1
-            elif guess_e != real_e:
-                wrong_rot += 1
-            else:
-                correct += 1
+    sol = None
 
-    total = h * w
+    if sol is not None:
+        wrong = 0
+        wrong_rot = 0
+        correct = 0
+        for y in range(h):
+            for x in range(w):
+                guess_p, guess_e = puzzle.solution[y, x]
+                real_p, real_e = sol[y, x]
+                if guess_p != real_p:
+                    wrong += 1
+                elif guess_e != real_e:
+                    wrong_rot += 1
+                else:
+                    correct += 1
 
-    print(f"Wrong rotation: {wrong_rot} -> {wrong_rot / total * 100:.2f}%")
-    print(f"Wrong piece: {wrong} -> {wrong / total * 100:.2f}%")
-    print(f"Correct: {correct} -> {correct / total * 100:.2f}%")
+        total = h * w
+
+        print(f"Wrong rotation: {wrong_rot} -> {wrong_rot / total * 100:.2f}%")
+        print(f"Wrong piece: {wrong} -> {wrong / total * 100:.2f}%")
+        print(f"Correct: {correct} -> {correct / total * 100:.2f}%")
+
     puzzle.show_solution()
     cv2.waitKey(-1)
 
