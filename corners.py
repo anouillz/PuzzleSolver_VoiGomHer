@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 
 from edge import EdgeType
 from piece import Piece
-from utils import resample_polygon
+from utils import resample_polygon, to_polar, pol2cart
 
 timings = {
     "resampling": [],
@@ -35,24 +35,6 @@ def angle_diff(angle1, angle2):
     if diff > np.pi:
         diff = np.pi * 2 - diff
     return diff
-
-def to_polar(contour):
-    cv_contour = contour.reshape((contour.shape[0], 1, contour.shape[1]))
-    cv_contour = np.int32(cv_contour)
-    M = cv2.moments(cv_contour)
-    cX = int(M["m10"] / M["m00"])
-    cY = int(M["m01"] / M["m00"])
-
-    distances = []
-    angles = []
-
-    for c in contour:
-        dist = np.linalg.norm(c - [cX, cY])
-        angle = np.atan2(c[1] - cY, c[0] - cX)
-        distances.append(dist)
-        angles.append(angle)
-
-    return np.array(list(zip(angles, distances)))
 
 def wrap_win(data, center, radius):
     return np.array(data).take(
@@ -110,12 +92,6 @@ def filter_corners(angles, dists, candidate_pairs):
     print("No perfect match")
     return candidates[:4]
 
-def pol2cart(pol):
-    angle, dist = pol
-    return [
-        dist * np.cos(angle),
-        dist * np.sin(angle)
-    ]
 
 def find_corners(contour, dbg=False):
     if dbg: print("Resampling")
