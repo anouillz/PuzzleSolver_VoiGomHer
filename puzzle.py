@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import time
 from typing import Optional
 
@@ -26,6 +27,7 @@ class Puzzle:
         self.pieces: list[Piece] = pieces
         self.solution: Optional[np.array] = None
         self.sol_i = 0
+        self.max_depth = 0
 
     def __repr__(self):
         return f"<Puzzle {len(self.pieces)} pieces - {'UNSOLVED' if self.solution is None else 'SOLVED'}>"
@@ -83,12 +85,15 @@ class Puzzle:
     def solve(self, return_first: bool = False, debug: bool = False):
         result: np.array = np.full((len(self.pieces), len(self.pieces), 2), -1)
 
-        corner_piece: Optional[Piece] = None
+        corners = []
         # find first corner
         for p in self.pieces:
             if p.type == PieceType.CORNER:
-                corner_piece = p
-                break
+                corners.append(p)
+
+        corner_piece: Optional[Piece] = None
+        if len(corners) != 0:
+            corner_piece = random.choice(corners)
 
         if corner_piece is None:
             if debug:
@@ -117,6 +122,7 @@ class Puzzle:
 
         self._best_value = 0
         self._best_solution = None
+        self.max_depth = 0
 
         def createBorderMatches(
                 remainingPieces: list[Piece],
@@ -129,6 +135,10 @@ class Puzzle:
 
             found_sol = False
             #print(f"Remaining: {len(remainingPieces)} / {len(pieces)} / {x=}, {y=}, {dx=}, {dy=}, lastPiece={result[y - dy, x - dx]}")
+            depth = len(self.pieces) - len(remainingPieces)
+            if depth > self.max_depth:
+                print(f"New max depth: {depth}")
+                self.max_depth = depth
             if len(remainingPieces) == 0:
                 #print("  Weird, remainingPieces is empty !")
                 return False
@@ -279,7 +289,7 @@ class Puzzle:
                 result[y, x] = [-1, -1]
                 #print(f"    Removing {(x, y)} = {result[y, x]}, testing another piece")
 
-            print("  No solution found, backtracking")
+            #print("  No solution found, backtracking")
             return found_sol
 
         flat_indices = []
@@ -319,33 +329,63 @@ class Puzzle:
         print(self.solution.shape)
         print(self.solution[..., 0])
 
+        corners_pos: np.array = np.zeros((self.solution.shape[0] + 1, self.solution.shape[1] + 1, 2), dtype=np.float32)
+
+        corners_pos[0, 0] = [200, 200]
+        corners_pos[0, 1] = [400, 200]
+
         img: np.array = np.zeros((0, 0, 4), np.uint8)
-        oy = 0
-        max_w = 0
         for y in range(self.solution.shape[0]):
-            height = 0
-            ox = 0
             for x in range(self.solution.shape[1]):
-                idx, rot = self.solution[y, x]
+                idx, top_idx = self.solution[y, x]
                 if idx == -1:
-                    ox += max_w
                     continue
                 piece: Piece = self.pieces[idx]
-                piece_img: np.array = piece.get_rotated_img(rot)
+                if x == 0:
+                    c1 = corners_pos[y, x+1]  # top-right
+                    c2 = corners_pos[y, x]  # top-left
+                    ox, oy = c2
+                    is_side = False
+                else:
+                    c1 = corners_pos[y, x]  # top-left
+                    c2 = corners_pos[y+1, x]  # bottom-left
+                    ox, oy = c1
+                    is_side = True
+
+                vec: np.array = c2 - c1
+                res: tuple[np.array, tuple[np.array, np.array, np.array, np.array]] = piece.get_rotated_img(top_idx, vec, is_side)
+                piece_img: np.array = res[0]
+                tl, bl, br, tr = res[1]
+
+                if is_side:
+                    corners_pos[y, x+1] = np.array([ox + tr[0] - tl[0], oy + tr[1] - tl[1]])  # top-right
+                    corners_pos[y+1, x+1] = np.array([ox + br[0] - tl[0], oy + br[1] - tl[1]])  # bottom-right
+                else:
+                    corners_pos[y+1, x] = np.array([ox + bl[0] - tl[0], oy + bl[1] - tl[1]])  # bottom-left
+                    corners_pos[y+1, x+1] = np.array([ox + br[0] - tl[0], oy + br[1] - tl[1]])  # bottom-right
+
+                x1 = int(ox - tl[0])
+                y1 = int(oy - tl[1])
+                x2 = x1 + piece_img.shape[1]
+                y2 = y1 + piece_img.shape[0]
+
                 mask = piece_img[..., 3] != 0
-                x2 = ox + piece_img.shape[1]
-                y2 = oy + piece_img.shape[0]
                 if x2 >= img.shape[1] or y2 >= img.shape[0]:
+                    #print(f"Increasing image size to include ({x1}:{x2}, {y1}:{y2})  (current size: {img.shape[1]}x{img.shape[0]})")
                     img2 = np.zeros((max(img.shape[0], y2), max(img.shape[1], x2), 4), np.uint8)
                     img2[:img.shape[0], :img.shape[1]] = img
                     img = img2
-                img[oy:y2, ox:x2][mask] = piece_img[mask]
-                height = max(height, piece_img.shape[0])
-                ox += piece_img.shape[1]
-                max_w = max(max_w, piece_img.shape[1])
-                #cv2.imshow("Solution", img)
-                #cv2.waitKey(100)
-            oy += height
+
+                if y1 < 0 or x1 < 0:
+                    print(f"Oops, we're going out of the image ({x},{y}), ({x1}, {y1})")
+                img[y1:y2, x1:x2][mask] = piece_img[mask]
+
+                #img2 = np.copy(img)
+                #for cy in range(corners_pos.shape[0]):
+                #    for cx in range(corners_pos.shape[1]):
+                #        cv2.circle(img2, np.intp(corners_pos[cy, cx]), 5, (255, 255, 255), cv2.FILLED)
+                #cv2.imshow("Solution", img2)
+                #cv2.waitKey(-1)
 
         if show:
             cv2.imshow("Solution", img)
