@@ -52,15 +52,16 @@ class Puzzle:
         return Puzzle(pieces, img)
 
     @staticmethod
-    def from_images(imgs: list[np.array]) -> Puzzle:
+    def from_images(imgs: list[tuple[np.array, np.array, np.array, np.array]]) -> Puzzle:
         pieces = []
         piece_id = 0
-        for i, img in enumerate(imgs):
+        for i, wrgb_imgs in enumerate(imgs):
             print(f"Processing image {i+1}/{len(imgs)}")
+            img = wrgb_imgs[0]
 
             # Contours
             print("Finding contours")
-            piece_contours = find_piece_contours(img)
+            piece_contours = find_piece_contours(*wrgb_imgs)
             n_pieces = len(piece_contours)
             print(f"{n_pieces} pieces")
             img2 = img.copy()
@@ -75,7 +76,7 @@ class Puzzle:
                 piece_id += 1
 
             cv2.imwrite(f"/tmp/img_{i}.jpg", img2)
-            cv2.waitKey(-1)
+            #cv2.waitKey(-1)
 
         return Puzzle(pieces, None)
 

@@ -27,19 +27,26 @@ def main():
     ]"""
 
     #puzzle: Puzzle = Puzzle.from_image(img)
-    #puzzle: Puzzle = Puzzle.from_image(
-    #    cv2.imread("res/24_pieces/white.jpg"),
-    #    cv2.imread("res/24_pieces/red.jpg"),
-    #    cv2.imread("res/24_pieces/green.jpg"),
-    #    cv2.imread("res/24_pieces/blue.jpg"),
-    #)
     puzzle: Puzzle = Puzzle.from_image(
-        cv2.imread("res/49_pieces/white.jpg"),
-        cv2.imread("res/49_pieces/red.jpg"),
-        cv2.imread("res/49_pieces/green.jpg"),
-        cv2.imread("res/49_pieces/blue.jpg"),
+        cv2.imread("res/24_pieces/white.jpg"),
+        cv2.imread("res/24_pieces/red.jpg"),
+        cv2.imread("res/24_pieces/green.jpg"),
+        cv2.imread("res/24_pieces/blue.jpg"),
     )
+    #puzzle: Puzzle = Puzzle.from_image(
+    #    cv2.imread("res/49_pieces/white.jpg"),
+    #    cv2.imread("res/49_pieces/red.jpg"),
+    #    cv2.imread("res/49_pieces/green.jpg"),
+    #    cv2.imread("res/49_pieces/blue.jpg"),
+    #)
     #puzzle: Puzzle = Puzzle.from_images(imgs)
+    #puzzle: Puzzle = Puzzle.from_images([
+    #    tuple(
+    #        cv2.imread(f"res/150_pieces/{i+1}_{col}.jpg")
+    #        for col in ("white", "red", "green", "blue")
+    #    )
+    #    for i in [0,1,3]
+    #])
     solution24 = np.array([
         [
             [22, 2],

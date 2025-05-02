@@ -42,6 +42,7 @@ def find_piece_contours(image, red, green, blue):
 
     full_mask = find_pieces_mask(red, green, blue)
 
+    cv2.imwrite("/tmp/04_full_mask.jpg", full_mask)
 
     # Binary image → find contours (only external)
     contours, hierarchy = cv2.findContours(full_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
