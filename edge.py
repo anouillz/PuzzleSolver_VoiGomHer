@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import colorsys
+import math
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
 import numpy as np
-import colorsys,math
 
 from utils import resample_polygon
 

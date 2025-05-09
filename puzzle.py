@@ -130,14 +130,26 @@ class Puzzle:
                 y = 0,
                 dx = 0,
                 dy = 0,
-                corner_placed = 0,
-                value = 0)-> bool:
+                cur_w = 0,
+                cur_h = 0,
+                tr_placed = False,
+                bl_placed = False,
+                value = 0) -> bool:
 
             found_sol = False
-            #print(f"Remaining: {len(remainingPieces)} / {len(pieces)} / {x=}, {y=}, {dx=}, {dy=}, lastPiece={result[y - dy, x - dx]}")
+            #print(f"Remaining: {len(remainingPieces)} / {len(self.pieces)} / {x=}, {y=}, {dx=}, {dy=}, {cur_w=}, {cur_h=}, lastPiece={result[y - dy, x - dx]}")
+            #print(result[..., 0])
+            #input()
+            #self.solution = result
+            #self.show_solution()
+            #if cv2.waitKey(100) != -1:
+            #    cv2.waitKey(-1)
             depth = len(self.pieces) - len(remainingPieces)
             if depth > self.max_depth:
                 print(f"New max depth: {depth}")
+                self.solution = result
+                self.show_solution()
+                cv2.waitKey(100)
                 self.max_depth = depth
             if len(remainingPieces) == 0:
                 #print("  Weird, remainingPieces is empty !")
@@ -146,39 +158,28 @@ class Puzzle:
             currentPiece: Piece = self.pieces[result[y - dy, x - dx, 0]]
             currentEdge = currentPiece.get_edge_by_offset(result[y - dy, x - dx, 1], dx, dy)
 
-            prevEdge = currentEdge.get_prev()
-            nextEdge = currentEdge.get_next()
-            prevEdgeIsFlat = prevEdge.type == EdgeType.FLAT
-            nextEdgeIsFlat = nextEdge.type == EdgeType.FLAT
-
             neighborEdges = get_edges_at(x, y)
 
 
             matchValues = []
             for p in remainingPieces:
+                if False and p.type ==  PieceType.CORNER:
+                    if tr_placed and bl_placed:
+                        if x != cur_w - 1 or y != cur_h - 1:
+                            continue
 
-                if p.type ==  PieceType.CORNER:
-                    if corner_placed == 3 and x != 0:
-                        continue
-
-                    if corner_placed == 2:
-                        area = (x + 1) * (y + 1)
+                        area = cur_w * cur_h
                         if area != len(self.pieces):
                             continue
 
-                elif corner_placed == 2:
-                    area = (x + 1) * (y + 1)
-                    if area >= len(self.pieces):
-                        continue
+                    else:
+                        if dx == 1 and x != cur_w:
+                            continue
+
+                        if dy == 1 and y != cur_h:
+                            continue
 
                 for i, e in enumerate(p.edges):
-                    if prevEdgeIsFlat != (e.get_next().type == EdgeType.FLAT):
-                        continue
-
-                    if nextEdgeIsFlat != (e.get_prev().type == EdgeType.FLAT):
-                        continue
-
-                    # ----
 
                     matchValue = 0
 
@@ -196,13 +197,30 @@ class Puzzle:
                     # target_i = 1
                     # offset = 2
 
+                    can_be_placed: bool = True
                     for j, ne in enumerate(neighborEdges):
                         edgeToCheck = p.edges[(j + offset) % 4]
+
+                        prevEdge = edgeToCheck.get_prev()
+                        nextEdge = edgeToCheck.get_next()
+                        prevEdgeIsFlat = prevEdge.type == EdgeType.FLAT
+                        nextEdgeIsFlat = nextEdge.type == EdgeType.FLAT
+
+                        if ne is not None and prevEdgeIsFlat != (ne.get_next().type == EdgeType.FLAT):
+                            can_be_placed = False
+                            break
+
+                        if ne is not None and nextEdgeIsFlat != (ne.get_prev().type == EdgeType.FLAT):
+                            can_be_placed = False
+                            break
 
                         if ne is None:
                             continue
 
                         matchValue += edgeToCheck.matches_with(ne)
+
+                    if not can_be_placed:
+                        continue
 
                     if matchValue != np.inf:
                         matchValues.append((e, matchValue))
@@ -232,55 +250,72 @@ class Puzzle:
                     )
                 )
 
-                dx2, dy2 = dx, dy
+                tr_placed2 = tr_placed
+                bl_placed2 = bl_placed
+
+                dx2 = dx
+                dy2 = dy
+
+                if x == 0:
+                    dx2, dy2 = 1, 0
+
+                elif y == 0:
+                    dx2, dy2 = 0, 1
+
+                x2 = x + dx2
+                y2 = y + dy2
+
+                cur_w2 = max(cur_w, x + 1)
+                cur_h2 = max(cur_h, y + 1)
+
                 if edge.piece.type == PieceType.CORNER:
-                    #print("    Corner placed, turning right")
-                    dx2, dy2 = rotate(dx, dy)
+                    #print("Placing corner")
+                    if x == 0:
+                        #print("Placing bottom-left corner")
+                        bl_placed2 = True
+                    elif y == 0:
+                        #print("Placing top-right corner")
+                        tr_placed2 = True
+                # →→→→→→
+                if dx == 1:
+                    if x == cur_w - 1:
+                        if tr_placed:
+                            x2 = 0
+                            y2 = y + 1
+                        else:
+                            x2 = x + 1
+                            y2 = 0
 
-                x2 = x + dx2
-                y2 = y + dy2
+                elif dy == 1:
+                    if y == cur_h - 1:
+                        if bl_placed:
+                            x2 = x + 1
+                            y2 = 0
+                        else:
+                            x2 = 0
+                            y2 = y + 1
 
-                if y2 < 0 or y2 >= result.shape[0] or x2 < 0 or x2 >= result.shape[1]:
-                    #print("    Arrived at edge ! Testing another piece")
-                    continue
+                if x == 1 and y == 0:
+                    x2, y2 = 0, 1
 
-                if result[y2, x2, 0] != -1:
-                    #print(f"    There's already a piece here ({result[y2, x2]}), turning right")
-                    dx2, dy2 = rotate(dx2, dy2)
-
-                x2 = x + dx2
-                y2 = y + dy2
-
-                if y2 < 0 or y2 >= result.shape[0] or x2 < 0 or x2 >= result.shape[1]:
-                    #print("    Arrived at edge ! (2) Testing another piece")
-                    continue
-
-                if result[y2, x2, 0] != -1:
-                    #print("    Reached a dead-end")
-                    if len(remainingPieces2) == 0:
-                        #print("    All pieces have been placed, found a solution")
-                        result[y, x] = new_match
-                        self._best_value = value
-                        self._best_solution = np.copy(result)
-                        print(f"New best solution: {value=}")
-                        self.solution = self._best_solution
-                        self.show_solution(show=True, save=True)
-                        input("Press ENTER to continue")
-                        return True
-
-                    #print("    Some pieces left, testing another piece")
-
-                    if edge.piece.type == PieceType.CORNER:
-                        continue
-
-                    return False
+                if len(remainingPieces2) == 0:
+                    result[y, x] = new_match
+                    self._best_value = value
+                    self._best_solution = np.copy(result)
+                    print(f"New best solution: {value=}")
+                    self.solution = self._best_solution
+                    self.show_solution(show=True, save=True)
+                    input("Press ENTER to continue")
+                    return True
 
                 result[y, x] = new_match
                 if createBorderMatches(
                     remainingPieces2,
                     x2, y2,
                     dx2, dy2,
-                    corner_placed + 1 if edge.piece.type == PieceType.CORNER else corner_placed,
+                    cur_w2, cur_h2,
+                    tr_placed2,
+                    bl_placed2,
                     value2):
                     found_sol = True
                     if return_first:
@@ -308,7 +343,7 @@ class Puzzle:
         )
 
         t0 = time.time()
-        solved = createBorderMatches(remainingPieces, x=1, dx=1, corner_placed=1)
+        solved = createBorderMatches(remainingPieces, x=1, dx=1, cur_w=1, cur_h=1)
         t1 = time.time()
         print(f"Time taken: {t1 - t0:.2f} seconds")
         if not solved:
