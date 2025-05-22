@@ -10,6 +10,7 @@ import numpy as np
 from contours import find_piece_contours
 from corners import find_corners
 from edge import Edge, EdgeType
+from mesh import Mesh
 from piece import Piece, PieceType
 
 
@@ -148,8 +149,8 @@ class Puzzle:
             if depth > self.max_depth:
                 print(f"New max depth: {depth}")
                 self.solution = result
-                self.show_solution()
-                cv2.waitKey(100)
+                #self.show_solution()
+                #cv2.waitKey(100)
                 self.max_depth = depth
             if len(remainingPieces) == 0:
                 #print("  Weird, remainingPieces is empty !")
@@ -369,59 +370,44 @@ class Puzzle:
         corners_pos[0, 0] = [200, 200]
         corners_pos[0, 1] = [400, 200]
 
-        img: np.array = np.zeros((0, 0, 4), np.uint8)
+        mesh: Mesh = Mesh.from_puzzle(self)
+        steps = mesh.stabilize(10000)
+        print(f"Stabilized in {steps} steps")
+
+        ox, oy, w, h = mesh.get_bounds()
+
+        margin: float = 20
+        img_size: tuple[int, int, int] = (
+            int(h + margin * 2),
+            int(w + margin * 2),
+            4
+        )
+
+        img: np.array = np.zeros(img_size, np.uint8)
+        offsets = [(0, 0), (0, 1), (1, 1), (1, 0)]
+
+        for piece in self.pieces:
+            piece.extract_piece_img()
+
+        t0 = time.time()
         for y in range(self.solution.shape[0]):
             for x in range(self.solution.shape[1]):
                 idx, top_idx = self.solution[y, x]
                 if idx == -1:
                     continue
                 piece: Piece = self.pieces[idx]
-                if x == 0:
-                    c1 = corners_pos[y, x+1]  # top-right
-                    c2 = corners_pos[y, x]  # top-left
-                    ox, oy = c2
-                    is_side = False
-                else:
-                    c1 = corners_pos[y, x]  # top-left
-                    c2 = corners_pos[y+1, x]  # bottom-left
-                    ox, oy = c1
-                    is_side = True
 
-                vec: np.array = c2 - c1
-                res: tuple[np.array, tuple[np.array, np.array, np.array, np.array]] = piece.get_rotated_img(top_idx, vec, is_side)
-                piece_img: np.array = res[0]
-                tl, bl, br, tr = res[1]
+                corners_pos = []
+                target_corner_pos = []
+                for i, (dx, dy) in enumerate(offsets):
+                    node = mesh.node_grid[y * 2 + dy][x * 2 + dx]
+                    target_corner_pos.append((node.pos.x - ox + margin, node.pos.y - oy + margin))
+                    corners_pos.append(piece.corners_pos[(i + top_idx + 1) % 4])
 
-                if is_side:
-                    corners_pos[y, x+1] = np.array([ox + tr[0] - tl[0], oy + tr[1] - tl[1]])  # top-right
-                    corners_pos[y+1, x+1] = np.array([ox + br[0] - tl[0], oy + br[1] - tl[1]])  # bottom-right
-                else:
-                    corners_pos[y+1, x] = np.array([ox + bl[0] - tl[0], oy + bl[1] - tl[1]])  # bottom-left
-                    corners_pos[y+1, x+1] = np.array([ox + br[0] - tl[0], oy + br[1] - tl[1]])  # bottom-right
+                piece.warp_place(corners_pos, target_corner_pos, img)
 
-                x1 = int(ox - tl[0])
-                y1 = int(oy - tl[1])
-                x2 = x1 + piece_img.shape[1]
-                y2 = y1 + piece_img.shape[0]
-
-                mask = piece_img[..., 3] != 0
-                if x2 >= img.shape[1] or y2 >= img.shape[0]:
-                    #print(f"Increasing image size to include ({x1}:{x2}, {y1}:{y2})  (current size: {img.shape[1]}x{img.shape[0]})")
-                    img2 = np.zeros((max(img.shape[0], y2), max(img.shape[1], x2), 4), np.uint8)
-                    img2[:img.shape[0], :img.shape[1]] = img
-                    img = img2
-
-                if y1 < 0 or x1 < 0:
-                    print(f"Oops, we're going out of the image ({x},{y}), ({x1}, {y1})")
-                img[y1:y2, x1:x2][mask] = piece_img[mask]
-
-                #img2 = np.copy(img)
-                #for cy in range(corners_pos.shape[0]):
-                #    for cx in range(corners_pos.shape[1]):
-                #        cv2.circle(img2, np.intp(corners_pos[cy, cx]), 5, (255, 255, 255), cv2.FILLED)
-                #cv2.imshow("Solution", img2)
-                #cv2.waitKey(-1)
-
+        t1 = time.time()
+        print(f"Created solution image in {t1-t0:.2f}s")
         if show:
             cv2.imshow("Solution", img)
             cv2.waitKey(100)

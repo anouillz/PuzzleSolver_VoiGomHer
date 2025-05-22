@@ -1,11 +1,6 @@
-import time
-from typing import Optional
-
 import cv2
 import numpy as np
 
-from edge import Edge, EdgeType
-from piece import Piece, PieceType
 from puzzle import Puzzle
 
 PATH = "res/24_pieces_sweater_kevin_small.jpg"

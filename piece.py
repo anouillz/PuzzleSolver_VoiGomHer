@@ -89,6 +89,31 @@ class Piece:
         )
         return angle
 
+    def extract_piece_img(self):
+        x, y, w, h = cv2.boundingRect(self.contour)
+        cropped = self.img[y:y+h, x:x+w]
+        mask = np.zeros((h, w), dtype=np.uint8)
+        contour = self.contour - np.array([x, y])
+        cv2.drawContours(mask, [contour], 0, (255, 255, 255), cv2.FILLED)
+
+        self.masked = cv2.cvtColor(cropped, cv2.COLOR_BGR2BGRA)
+        self.masked[..., 3] = mask
+
+    def warp_place(self, corners_pos: list[np.array], target_corners_pos: list[tuple[float, float]], img: np.array):
+        x, y, w, h = cv2.boundingRect(self.contour)
+        corners_pos = np.float32(corners_pos)
+        corners_pos[..., 0] -= x
+        corners_pos[..., 1] -= y
+
+        # Crop image around piece and draw alpha mask
+        M = cv2.getPerspectiveTransform(corners_pos, np.float32(target_corners_pos))
+        warped = cv2.warpPerspective(self.masked, M, img.shape[:2][::-1])
+        #print(img.shape, warped.shape)
+        #print(corners_pos, target_corners_pos)
+
+        mask = warped[..., 3] != 0
+        img[mask] = warped[mask]
+
     def get_rotated_img(self, top_idx: int, vec: np.array, is_side: bool = False) -> np.array:
         # Crop image around piece and draw alpha mask
         x, y, w, h = cv2.boundingRect(self.contour)
