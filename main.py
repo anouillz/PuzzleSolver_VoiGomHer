@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 
 from puzzle import Puzzle
+from puzzle_solver import PuzzleSolver
 
 PATH = "res/24_pieces_sweater_kevin_small.jpg"
 #PATH = "res/49_pieces_sweater_kevin_small2.jpg"
@@ -23,6 +24,7 @@ def main():
 
     #puzzle: Puzzle = Puzzle.from_image(img)
     p = 49
+
     if p == 24:
         puzzle: Puzzle = Puzzle.from_image(
             cv2.imread("res/24_pieces/white.jpg"),
@@ -150,8 +152,8 @@ def main():
     print(puzzle)
 
     input("Solve ?\n> ")
-
-    puzzle.solve(return_first=True)
+    puzzle_solver = PuzzleSolver(puzzle)
+    puzzle_solver.solve(return_first=True)
     coords = np.argwhere(puzzle.solution[..., 0] != -1)
     y, x, h, w = cv2.boundingRect(coords)
     #np.savetxt("/tmp/sol.txt", puzzle.solution[..., 0], fmt="%4d")
@@ -182,7 +184,7 @@ def main():
         print(f"Wrong piece: {wrong} -> {wrong / total * 100:.2f}%")
         print(f"Correct: {correct} -> {correct / total * 100:.2f}%")
 
-    puzzle.show_solution()
+    puzzle_solver.puzzle.show_solution()
     cv2.waitKey(-1)
 
 
