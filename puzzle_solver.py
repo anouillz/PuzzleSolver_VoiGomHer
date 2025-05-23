@@ -4,6 +4,7 @@ from typing import Optional
 
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
 
 from edge import Edge, EdgeType
 from piece import Piece, PieceType
@@ -18,247 +19,34 @@ OFFSETS = [
 
 
 class PuzzleSolver:
-
-    def __init__(self, puzzle):
+    def __init__(self, puzzle: Puzzle, debug: bool = False):
         self.puzzle: Puzzle = puzzle
+        self.debug: bool = debug
         self._best_value = 0
         self._best_solution = None
+        self.result: np.array = np.zeros((0, 0, 2))
+        self.remaining_pieces: set[Piece] = set(self.puzzle.pieces)
+        self.next_positions: set[tuple[int, int]] = set()
+        self.max_depth: int = 0
 
-    def solve(self, return_first: bool = False, debug: bool = False):
-        result: np.array = np.full((len(self.puzzle.pieces), len(self.puzzle.pieces), 2), -1)
-
+    def find_corner(self) -> Optional[Piece]:
         corners = []
-        # find first corner
+
         for p in self.puzzle.pieces:
             if p.type == PieceType.CORNER:
                 corners.append(p)
 
-        corner_piece: Optional[Piece] = None
         if len(corners) != 0:
-            corner_piece = random.choice(corners)
+            return random.choice(corners)
+        return None
 
+    def place_corner(self):
+        corner_piece = self.find_corner()
         if corner_piece is None:
-            if debug:
+            if self.debug:
                 print("no first corner found")
             else:
                 print("first corner found", corner_piece)
-
-        def rotate(dx: int, dy: int) -> tuple[int, int]:
-            return -dy, dx
-
-        def get_edges_at(x, y) -> list[Optional[Edge]]:
-            edges: list[Optional[Edge]] = []
-            for dx, dy in OFFSETS:
-                x2 = x + dx
-                y2 = y + dy
-                edge = None
-                if 0 <= x2 < result.shape[1] and 0 <= y2 < result.shape[0]:
-                    piece_id, top_idx = result[y2, x2]
-                    if piece_id != -1:
-                        piece = self.puzzle.pieces[piece_id]
-                        edge = piece.get_edge_by_offset(top_idx, -dx, -dy)
-
-                edges.append(edge)
-
-            return edges
-
-        def createBorderMatches(
-                remainingPieces: list[Piece],
-                x=0,
-                y=0,
-                dx=0,
-                dy=0,
-                cur_w=0,
-                cur_h=0,
-                tr_placed=False,
-                bl_placed=False,
-                value=0) -> bool:
-
-            found_sol = False
-
-            # print(f"Remaining: {len(remainingPieces)} / {len(self.pieces)} / {x=}, {y=}, {dx=}, {dy=}, {cur_w=}, {cur_h=}, lastPiece={result[y - dy, x - dx]}")
-            # print(result[..., 0])
-            # input()
-            # self.solution = result
-            # self.show_solution()
-            # if cv2.waitKey(100) != -1:
-            #    cv2.waitKey(-1)
-
-            depth = len(self.puzzle.pieces) - len(remainingPieces)
-            if depth > self.puzzle.max_depth:
-                print(f"New max depth: {depth}")
-                self.puzzle.solution = result
-                self.puzzle.show_solution()
-                cv2.waitKey(100)
-                self.puzzle.max_depth = depth
-
-            if len(remainingPieces) == 0:
-                # print("  Weird, remainingPieces is empty !")
-                return False
-
-            neighborEdges = get_edges_at(x, y)
-
-            matchValues = []
-            for p in remainingPieces:
-                if False and p.type == PieceType.CORNER:
-                    if tr_placed and bl_placed:
-                        if x != cur_w - 1 or y != cur_h - 1:
-                            continue
-
-                        area = cur_w * cur_h
-                        if area != len(self.puzzle.pieces):
-                            continue
-
-                    else:
-                        if dx == 1 and x != cur_w:
-                            continue
-
-                        if dy == 1 and y != cur_h:
-                            continue
-
-                for i, e in enumerate(p.edges):
-
-                    matchValue = 0
-
-                    # neighborEdges = [top, left, bottom, right]
-                    target_i = 0
-                    if dx == 1:
-                        target_i = 1
-                    elif dy == -1:
-                        target_i = 2
-                    elif dx == -1:
-                        target_i = 3
-                    offset = (i - target_i)
-
-                    can_be_placed: bool = True
-                    for j, ne in enumerate(neighborEdges):
-                        edgeToCheck = p.edges[(j + offset) % 4]
-
-                        prevEdge = edgeToCheck.get_prev()
-                        nextEdge = edgeToCheck.get_next()
-                        prevEdgeIsFlat = prevEdge.type == EdgeType.FLAT
-                        nextEdgeIsFlat = nextEdge.type == EdgeType.FLAT
-
-                        if ne is not None and prevEdgeIsFlat != (ne.get_next().type == EdgeType.FLAT):
-                            can_be_placed = False
-                            break
-
-                        if ne is not None and nextEdgeIsFlat != (ne.get_prev().type == EdgeType.FLAT):
-                            can_be_placed = False
-                            break
-
-                        if ne is None:
-                            continue
-
-                        matchValue += edgeToCheck.matches_with(ne)
-
-                    if not can_be_placed:
-                        continue
-
-                    if matchValue != np.inf:
-                        matchValues.append((e, matchValue))
-
-            matchValues = sorted(matchValues, key=lambda m: m[1])
-            # print(f"  {len(matchValues)} possible pieces")
-            for edge, val in matchValues:
-                value2 = value + val
-                if self._best_solution is not None and value2 >= self._best_value:
-                    print("Value too big, cutting branch")
-                    continue
-                top_id = edge.idx
-                if dx == 1:
-                    top_id -= 1
-                elif dx == -1:
-                    top_id += 1
-                elif dy == -1:
-                    top_id += 2
-                top_id %= 4
-
-                new_match = (edge.piece.id, top_id)
-                # print(f"    Placing piece {new_match} ({val=})")
-                remainingPieces2 = list(
-                    filter(
-                        lambda p: p.id != edge.piece.id,
-                        remainingPieces
-                    )
-                )
-
-                tr_placed2 = tr_placed
-                bl_placed2 = bl_placed
-
-                dx2 = dx
-                dy2 = dy
-
-                if x == 0:
-                    dx2, dy2 = 1, 0
-
-                elif y == 0:
-                    dx2, dy2 = 0, 1
-
-                x2 = x + dx2
-                y2 = y + dy2
-
-                cur_w2 = max(cur_w, x + 1)
-                cur_h2 = max(cur_h, y + 1)
-
-                if edge.piece.type == PieceType.CORNER:
-                    # print("Placing corner")
-                    if x == 0:
-                        # print("Placing bottom-left corner")
-                        bl_placed2 = True
-                    elif y == 0:
-                        # print("Placing top-right corner")
-                        tr_placed2 = True
-                # →→→→→→
-                if dx == 1:
-                    if x == cur_w - 1:
-                        if tr_placed:
-                            x2 = 0
-                            y2 = y + 1
-                        else:
-                            x2 = x + 1
-                            y2 = 0
-
-                elif dy == 1:
-                    if y == cur_h - 1:
-                        if bl_placed:
-                            x2 = x + 1
-                            y2 = 0
-                        else:
-                            x2 = 0
-                            y2 = y + 1
-
-                if x == 1 and y == 0:
-                    x2, y2 = 0, 1
-
-                if len(remainingPieces2) == 0:
-                    result[y, x] = new_match
-                    self._best_value = value
-                    self._best_solution = np.copy(result)
-                    print(f"New best solution: {value=}")
-                    self.puzzle.solution = self._best_solution
-                    self.puzzle.show_solution(show=True, save=True)
-                    input("Press ENTER to continue")
-                    return True
-
-                result[y, x] = new_match
-                if createBorderMatches(
-                        remainingPieces2,
-                        x2, y2,
-                        dx2, dy2,
-                        cur_w2, cur_h2,
-                        tr_placed2,
-                        bl_placed2,
-                        value2):
-                    found_sol = True
-                    if return_first:
-                        return True
-
-                result[y, x] = [-1, -1]
-                # print(f"    Removing {(x, y)} = {result[y, x]}, testing another piece")
-
-            # print("  No solution found, backtracking")
-            return found_sol
 
         flat_indices = []
         for i, e in enumerate(corner_piece.edges):
@@ -267,21 +55,212 @@ class PuzzleSolver:
         flat_indices = tuple(sorted(flat_indices))
         top_index = 3 if flat_indices == (0, 3) else flat_indices[0]
 
-        result[0, 0] = [corner_piece.id, top_index]
-        remainingPieces = list(
-            filter(
-                lambda p: p.id != corner_piece.id,
-                self.puzzle.pieces
-            )
-        )
+        self.result[0, 0] = [corner_piece.id, top_index]
+        self.remaining_pieces.remove(corner_piece)
 
-        t0 = time.time()
-        solved = createBorderMatches(remainingPieces, x=1, dx=1, cur_w=1, cur_h=1)
-        t1 = time.time()
-        print(f"Time taken: {t1 - t0:.2f} seconds")
-        if not solved:
-            print("Could not find a solution !")
+        self.next_positions = {
+            (0, 1),
+            (1, 0)
+        }
+
+    def is_in_bounds(self, x: int, y: int) -> bool:
+        return 0 <= x < self.result.shape[1] and 0 <= y < self.result.shape[0]
+
+    def get_edges_at(self, x: int, y: int) -> list[Optional[Edge]]:
+        edges: list[Optional[Edge]] = []
+        for dx, dy in OFFSETS:
+            x2: int = x + dx
+            y2: int = y + dy
+            edge: Optional[Edge] = None
+
+            if self.is_in_bounds(x2, y2):
+                piece_id, top_idx = self.result[y2, x2]
+                if piece_id != -1:
+                    piece: Piece = self.puzzle.pieces[piece_id]
+                    edge: Edge = piece.get_edge_by_offset(top_idx, -dx, -dy)
+
+            edges.append(edge)
+
+        return edges
+
+    def get_candidates(self, x: int, y: int) -> list[tuple[Edge, float]]:
+        neighbor_edges: list[Optional[Edge]] = self.get_edges_at(x, y)
+
+        match_values: list[tuple[Edge, float]] = []
+        for piece in self.remaining_pieces:
+            for i, e in enumerate(piece.edges):
+                match_value = 0
+
+                # neighbor_edges = [top, left, bottom, right]
+
+                can_be_placed: bool = True
+                for j, ne in enumerate(neighbor_edges):
+                    edge_to_check = piece.edges[(j + i) % 4]
+
+                    prev_edge = edge_to_check.get_prev()
+                    next_edge = edge_to_check.get_next()
+                    prev_edge_is_flat = prev_edge.type == EdgeType.FLAT
+                    next_edge_is_flat = next_edge.type == EdgeType.FLAT
+
+                    if ne is not None and prev_edge_is_flat != (ne.get_next().type == EdgeType.FLAT):
+                        can_be_placed = False
+                        break
+
+                    if ne is not None and next_edge_is_flat != (ne.get_prev().type == EdgeType.FLAT):
+                        can_be_placed = False
+                        break
+
+                    if ne is None:
+                        continue
+
+                    match_value += edge_to_check.matches_with(ne)
+
+                if not can_be_placed:
+                    continue
+
+                if match_value != np.inf:
+                    match_values.append((e, match_value))
+
+        match_values = sorted(match_values, key=lambda m: m[1])
+        return match_values
+
+    def place_piece(self, edge: Edge, value: float, pos: tuple[int, int]):
+        self.result[pos[1], pos[0]] = (edge.piece.id, edge.idx)
+        self.next_positions.remove(pos)
+        self.add_positions(*pos)
+        self.remaining_pieces.remove(edge.piece)
+
+    def add_positions(self, x: int, y: int):
+        for dx, dy in OFFSETS:
+            x2, y2 = x + dx, y + dy
+            if self.is_in_bounds(x2, y2):
+                if self.result[y2, x2][0] == -1:
+                    self.next_positions.add((x2, y2))
+
+    def remove_piece(self, pos: tuple[int, int]):
+        piece_id, top_idx = self.result[pos[1], pos[0]]
+        self.result[pos[1], pos[0]] = (-1, -1)
+        self.remove_positions(*pos)
+        self.next_positions.add(pos)
+        self.remaining_pieces.add(self.puzzle.pieces[piece_id])
+
+    def remove_positions(self, x: int, y: int):
+        for dx, dy in OFFSETS:
+            x2, y2 = x + dx, y + dy
+            if self.is_in_bounds(x2, y2):
+                has_nb: bool = False
+                for dx2, dy2 in OFFSETS:
+                    x3, y3 = x2 + dx2, y2 + dy2
+                    if self.is_in_bounds(x3, y3) and self.result[y3, x3][0] != -1:
+                        has_nb = True
+                        break
+
+                if not has_nb:
+                    self.next_positions.discard((x2, y2))
+
+    def backtrack(self):
+        worst_pos: tuple[int, int] = (0, 0)
+        worst_value: float = -1
+
+        for y in range(self.result.shape[0]):
+            for x in range(self.result.shape[1]):
+                value: float = self.get_value_at(x, y)
+                if value > worst_value:
+                    worst_pos = (x, y)
+                    worst_value = value
+
+        if worst_value != -1:
+            self.remove_piece(worst_pos)
+
+    def get_value_at(self, x: int, y: int) -> float:
+        r = self.get_piece_at(x, y)
+        if r is None:
+            return -1
+
+        piece: Piece = r[0]
+        top_idx: int = r[1]
+
+        value: float = 0
+        for dx, dy in OFFSETS:
+            x2, y2 = x + dx, y + dy
+            r2 = self.get_piece_at(x2, y2)
+            if r2 is None:
+                continue
+
+            piece2: Piece = r2[0]
+            top_idx2: int = r2[1]
+
+            edge1: Edge = piece.get_edge_by_offset(top_idx, dx, dy)
+            edge2: Edge = piece2.get_edge_by_offset(top_idx2, -dx, -dy)
+            value += edge1.matches_with(edge2)
+
+        return value
+
+    def get_piece_at(self, x: int, y: int) -> Optional[tuple[Piece, int]]:
+        if not self.is_in_bounds(x, y):
             return None
 
-        self.puzzle.solution = self._best_solution
-        return self._best_solution
+        piece_id, top_idx = self.result[y, x]
+        if piece_id == -1:
+            return None
+
+        piece: Piece = self.puzzle.pieces[piece_id]
+        return piece, top_idx
+
+    def plot_heatmap(self):
+        plt.figure(figsize=(10, 8))
+        values = np.zeros(self.result.shape[:2])
+        for y in range(self.result.shape[0]):
+            for x in range(self.result.shape[1]):
+                values[y, x] = self.get_value_at(x, y)
+
+        img = plt.imshow(values)
+        plt.colorbar(img)
+        plt.show()
+
+    def solve(self, debug: bool = False):
+        self.result: np.array = np.full((len(self.puzzle.pieces), len(self.puzzle.pieces), 2), -1)
+        self.remaining_pieces = set(self.puzzle.pieces)
+        self.max_depth = 0
+
+        self.place_corner()
+
+        t0 = time.time()
+        i = 0
+        while len(self.remaining_pieces) > 0:
+            best_edge: Optional[Edge] = None
+            best_value: float = 0
+            best_pos: tuple[int, int] = (0, 0)
+
+            for x, y in self.next_positions:
+                for edge, value in self.get_candidates(x, y):
+                    if best_edge is None or value < best_value:
+                        best_edge = edge
+                        best_value = value
+                        best_pos = (x, y)
+
+            if best_edge is None:
+                self.backtrack()
+            else:
+                self.place_piece(best_edge, best_value, best_pos)
+                i += 1
+
+                depth = len(self.puzzle.pieces) - len(self.remaining_pieces)
+                if depth > self.max_depth:
+                    print(f"New max depth: {depth}")
+                    if debug:
+                        self.puzzle.solution = self.result
+                        self.puzzle.show_solution(True, True)
+                        self.plot_heatmap()
+                        cv2.waitKey(100)
+                    self.max_depth = depth
+
+            if i >= 20:
+                i = 0
+                self.backtrack()
+
+        t1 = time.time()
+        print(f"Time taken: {t1 - t0:.2f} seconds")
+
+        self.puzzle.solution = self.result
+        return self.result
