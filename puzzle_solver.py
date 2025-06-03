@@ -5,6 +5,7 @@ from typing import Optional
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy.signal import convolve2d
 
 from edge import Edge, EdgeType
 from piece import Piece, PieceType
@@ -28,6 +29,7 @@ class PuzzleSolver:
         self.remaining_pieces: set[Piece] = set(self.puzzle.pieces)
         self.next_positions: set[tuple[int, int]] = set()
         self.max_depth: int = 0
+        self.placed: int = 0
 
     def find_corner(self) -> Optional[Piece]:
         corners = []
@@ -55,13 +57,33 @@ class PuzzleSolver:
         flat_indices = tuple(sorted(flat_indices))
         top_index = 3 if flat_indices == (0, 3) else flat_indices[0]
 
-        self.result[0, 0] = [corner_piece.id, top_index]
+        x = int(self.result.shape[1] // 2)
+        y = int(self.result.shape[0] // 2)
+        self.result[y, x] = [corner_piece.id, top_index]
         self.remaining_pieces.remove(corner_piece)
 
         self.next_positions = {
-            (0, 1),
-            (1, 0)
+            (y, x + 1),
+            (y + 1, x)
         }
+
+    def place_first_piece(self):
+        if len(self.remaining_pieces) == 0:
+            print("No available piece !")
+
+        piece: Piece = random.choice(list(self.remaining_pieces))
+        x = int(self.result.shape[1] // 2)
+        y = int(self.result.shape[0] // 2)
+        self.result[y, x] = [piece.id, 0]
+        self.remaining_pieces.remove(piece)
+
+        self.next_positions = {
+            (y, x - 1),
+            (y, x + 1),
+            (y - 1, x),
+            (y + 1, x)
+        }
+        self.placed += 1
 
     def is_in_bounds(self, x: int, y: int) -> bool:
         return 0 <= x < self.result.shape[1] and 0 <= y < self.result.shape[0]
@@ -125,10 +147,13 @@ class PuzzleSolver:
         return match_values
 
     def place_piece(self, edge: Edge, value: float, pos: tuple[int, int]):
+        print(f"Placing piece {edge.piece.id} at position ({pos[0]};{pos[1]})")
         self.result[pos[1], pos[0]] = (edge.piece.id, edge.idx)
         self.next_positions.remove(pos)
         self.add_positions(*pos)
         self.remaining_pieces.remove(edge.piece)
+
+        self.placed += 1
 
     def add_positions(self, x: int, y: int):
         for dx, dy in OFFSETS:
@@ -143,6 +168,8 @@ class PuzzleSolver:
         self.remove_positions(*pos)
         self.next_positions.add(pos)
         self.remaining_pieces.add(self.puzzle.pieces[piece_id])
+
+        self.placed -= 1
 
     def remove_positions(self, x: int, y: int):
         for dx, dy in OFFSETS:
@@ -214,16 +241,25 @@ class PuzzleSolver:
             for x in range(self.result.shape[1]):
                 values[y, x] = self.get_value_at(x, y)
 
+        kernel = np.array([
+            [ 1,  4,  7,  4,  1],
+            [ 4, 16, 26, 16,  4],
+            [ 7, 26, 41, 26,  7],
+            [ 4, 16, 26, 16,  4],
+            [ 1,  4,  7,  4,  1],
+        ]) / 1003
+        values = convolve2d(values, kernel, mode="valid")
         img = plt.imshow(values)
         plt.colorbar(img)
         plt.show()
 
     def solve(self, debug: bool = False):
-        self.result: np.array = np.full((len(self.puzzle.pieces), len(self.puzzle.pieces), 2), -1)
+        self.result: np.array = np.full((len(self.puzzle.pieces) * 2 - 1, len(self.puzzle.pieces) * 2 - 1, 2), -1)
         self.remaining_pieces = set(self.puzzle.pieces)
         self.max_depth = 0
 
-        self.place_corner()
+        #self.place_corner()
+        self.place_first_piece()
 
         t0 = time.time()
         i = 0
@@ -246,16 +282,16 @@ class PuzzleSolver:
                 i += 1
 
                 depth = len(self.puzzle.pieces) - len(self.remaining_pieces)
-                if depth > self.max_depth:
-                    print(f"New max depth: {depth}")
+                if self.placed > self.max_depth:
+                    print(f"New max depth: {self.placed}")
                     if debug:
                         self.puzzle.solution = self.result
                         self.puzzle.show_solution(True, True)
                         self.plot_heatmap()
                         cv2.waitKey(100)
-                    self.max_depth = depth
+                    self.max_depth = self.placed
 
-            if i >= 20:
+            if i >= 10:
                 i = 0
                 self.backtrack()
 

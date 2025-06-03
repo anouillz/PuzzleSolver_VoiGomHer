@@ -153,7 +153,7 @@ def main():
 
     input("Solve ?\n> ")
     puzzle_solver = PuzzleSolver(puzzle)
-    puzzle_solver.solve()
+    puzzle_solver.solve(True)
     coords = np.argwhere(puzzle.solution[..., 0] != -1)
     y, x, h, w = cv2.boundingRect(coords)
     #np.savetxt("/tmp/sol.txt", puzzle.solution[..., 0], fmt="%4d")

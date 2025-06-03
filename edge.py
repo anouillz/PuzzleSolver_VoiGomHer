@@ -153,7 +153,7 @@ class Edge:
         #return np.sum(np.pow(diff, 2))
         shape_diff = np.std(diff)
         shape_diff2 = np.std(diff2)
-        return_value = color_diff + shape_diff * 20 + shape_diff2 * 20
+        return_value = color_diff * 2 + shape_diff * 20 + shape_diff2 * 20
 
         self.CACHE[id] = return_value
         return return_value
