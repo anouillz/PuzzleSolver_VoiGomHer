@@ -88,7 +88,7 @@ class PuzzleSolver:
             if depth > self.puzzle.max_depth:
                 print(f"New max depth: {depth}")
                 self.puzzle.solution = result
-                self.puzzle.show_solution()
+                self.puzzle.show_solution(True, True)
                 cv2.waitKey(100)
                 self.puzzle.max_depth = depth
 

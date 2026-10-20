@@ -3,10 +3,15 @@ import numpy as np
 
 
 def find_pieces_mask(red, green, blue):
-    ret, mask_r = cv2.threshold(red[..., 2], 190, 255, cv2.THRESH_BINARY)
-    ret, mask_g = cv2.threshold(green[..., 1], 190, 255, cv2.THRESH_BINARY)
-    ret, mask_b = cv2.threshold(blue[..., 0], 190, 255, cv2.THRESH_BINARY)
+    ret, mask_r = cv2.threshold(red[..., 2], 220, 255, cv2.THRESH_BINARY)
+    ret, mask_g = cv2.threshold(green[..., 1], 220, 255, cv2.THRESH_BINARY)
+    ret, mask_b = cv2.threshold(blue[..., 0], 220, 255, cv2.THRESH_BINARY)
+
+    cv2.imwrite("/tmp/mask_r.jpg", mask_r)
+    cv2.imwrite("/tmp/mask_g.jpg", mask_g)
+    cv2.imwrite("/tmp/mask_b.jpg", mask_b)
     bg_mask = np.mean([mask_r, mask_g, mask_b], axis=0)
+    #bg_mask = mask_b
     bg_mask = cv2.GaussianBlur(bg_mask, (7, 7), 5).astype(np.uint8)
     contours, hrcy = cv2.findContours(bg_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     largest_area = 0

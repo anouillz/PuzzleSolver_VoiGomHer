@@ -23,7 +23,7 @@ def main():
     ]"""
 
     #puzzle: Puzzle = Puzzle.from_image(img)
-    p = 49
+    p = 104
 
     if p == 24:
         puzzle: Puzzle = Puzzle.from_image(
@@ -32,13 +32,35 @@ def main():
             cv2.imread("res/24_pieces/green.jpg"),
             cv2.imread("res/24_pieces/blue.jpg"),
         )
+    elif p == 48:
+        puzzle: Puzzle = Puzzle.from_images([
+            tuple(
+                cv2.imread(f"res/48_pieces_4/{i+1}_{col}.jpg")
+                for col in ("white", "red", "green", "blue")
+            )
+            for i in [0,1]
+        ])
     elif p == 49:
+        #puzzle: Puzzle = Puzzle.from_image(
+        #    cv2.imread("res/49_pieces/white.jpg"),
+        #    cv2.imread("res/49_pieces/red.jpg"),
+        #    cv2.imread("res/49_pieces/green.jpg"),
+        #    cv2.imread("res/49_pieces/blue.jpg"),
+        #)
         puzzle: Puzzle = Puzzle.from_image(
-            cv2.imread("res/49_pieces/white.jpg"),
-            cv2.imread("res/49_pieces/red.jpg"),
-            cv2.imread("res/49_pieces/green.jpg"),
-            cv2.imread("res/49_pieces/blue.jpg"),
+            cv2.imread("res/49_pieces_2/white.jpg"),
+            cv2.imread("res/49_pieces_2/red.jpg"),
+            cv2.imread("res/49_pieces_2/green.jpg"),
+            cv2.imread("res/49_pieces_2/blue.jpg"),
         )
+    elif p == 104:
+        puzzle: Puzzle = Puzzle.from_images([
+            tuple(
+                cv2.imread(f"res/104_pieces_3/{i+1}_{col}.jpg")
+                for col in ("white", "red", "green", "blue")
+            )
+            for i in [0,1,2,3,4,5,6,7]
+        ])
     elif p == 150:
         puzzle: Puzzle = Puzzle.from_images([
             tuple(
@@ -154,6 +176,7 @@ def main():
     input("Solve ?\n> ")
     puzzle_solver = PuzzleSolver(puzzle)
     puzzle_solver.solve(return_first=True)
+    #puzzle.solve(return_first=True)
     coords = np.argwhere(puzzle.solution[..., 0] != -1)
     y, x, h, w = cv2.boundingRect(coords)
     #np.savetxt("/tmp/sol.txt", puzzle.solution[..., 0], fmt="%4d")
@@ -184,7 +207,7 @@ def main():
         print(f"Wrong piece: {wrong} -> {wrong / total * 100:.2f}%")
         print(f"Correct: {correct} -> {correct / total * 100:.2f}%")
 
-    puzzle_solver.puzzle.show_solution()
+    puzzle.show_solution()
     cv2.waitKey(-1)
 
 

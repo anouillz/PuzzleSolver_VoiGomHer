@@ -140,8 +140,8 @@ class Mesh:
             for x in range(w * 2):
                 node: Node = Node(
                     Vec(
-                        (x - w) * 150,
-                        (y - h) * 150
+                        (x - w) * 100,
+                        (y - h) * 100
                     )
                 )
                 row.append(node)
@@ -234,7 +234,7 @@ class Mesh:
             pygame.draw.line(win, (255, 255, 255), [p1.x, p1.y], [p2.x, p2.y])
         for node in self.nodes:
             p = node.pos / 5 + off
-            pygame.draw.circle(win, (255, 0, 0), [p.x, p.y], 10)
+            pygame.draw.circle(win, (255, 0, 0), [p.x, p.y], 5)
             #pygame.draw.line(win, (0, 255, 0), [p.x, p.y], [p.x + node.acc2.x * 100, p.y + node.acc2.y * 100])
 
         if len(energy) >= 2:
